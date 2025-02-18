@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>貪吃蛇</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: #000;
+            font-family: 'Microsoft JhengHei', sans-serif;
+            overflow: hidden;
+        }
+
+        .background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 200%;
+            height: 100%;
+            background-image: 
+                linear-gradient(0deg, #87CEEB 0%, #87CEEB 40%, #0099ff 40%, #0099ff 60%, #87CEEB 60%, #87CEEB 100%),
+                repeating-linear-gradient(0deg, transparent 0%, transparent 40%, #00ff00 40%, #00ff00 45%, transparent 45%, transparent 100%);
+            background-size: 100% 100%, 100px 100%;
+            animation: scrollBackground 20s linear infinite;
+            z-index: -2;
+        }
+
+        .pixel-mountain {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            height: 150px;
+            background: repeating-linear-gradient(
+                45deg,
+                #4a9c2e 0%,
+                #4a9c2e 10%,
+                #3d8325 10%,
+                #3d8325 20%
+            );
+            clip-path: polygon(0% 100%, 20% 40%, 40% 80%, 60% 20%, 80% 60%, 100% 10%, 100% 100%);
+            z-index: -1;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            position: relative;
+            z-index: 1;
+            box-shadow: 
+                -4px -4px 0 0 #e75a10,
+                4px -4px 0 0 #e75a10,
+                -4px 4px 0 0 #e75a10,
+                4px 4px 0 0 #e75a10,
+                inset -4px -4px 0 0 #feb142,
+                inset 4px -4px 0 0 #feb142,
+                inset -4px 4px 0 0 #873000,
+                inset 4px 4px 0 0 #873000,
+                0 0 0 4px #e75a10;
+            border-radius: 10px;
+        }
+
+        .game-area {
+            position: relative;
+        }
+
+        .board-container {
+            position: relative;
+            width: 600px;
+            height: 600px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-width: 200px;
+        }
+
+        .info-panel {
+            background: rgba(222, 184, 135, 0.9);
+            padding: 20px;
+            box-shadow: 
+                -4px -4px 0 0 #e75a10,
+                4px -4px 0 0 #e75a10,
+                -4px 4px 0 0 #e75a10,
+                4px 4px 0 0 #e75a10,
+                inset -4px -4px 0 0 #feb142,
+                inset 4px -4px 0 0 #feb142,
+                inset -4px 4px 0 0 #873000,
+                inset 4px 4px 0 0 #873000,
+                0 0 0 4px #e75a10;
+            border-radius: 10px;
+        }
+
+        .score {
+            font-size: 24px;
+            text-align: center;
+            margin-bottom: 20px;
+            color: #333;
+            text-shadow: 1px 1px rgba(255, 255, 255, 0.5);
+        }
+
+        button {
+            padding: 15px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background: linear-gradient(to bottom, #666, #4A4A4A);
+            color: white;
+            transition: all 0.3s;
+            width: 100%;
+            margin-bottom: 15px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 
+                0 3px 0 #333,
+                0 4px 4px rgba(0, 0, 0, 0.3);
+            text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.5);
+        }
+
+        button:hover {
+            background: linear-gradient(to bottom, #777, #555);
+            transform: translateY(1px);
+            box-shadow: 
+                0 2px 0 #333,
+                0 3px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        button:active {
+            background: linear-gradient(to bottom, #555, #444);
+            transform: translateY(3px);
+            box-shadow: 
+                0 0 0 #333,
+                0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .home-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            width: auto;
+            padding: 10px 20px;
+        }
+
+        @keyframes scrollBackground {
+            from { transform: translateX(0); }
+            to { transform: translateX(-50%); }
+        }
+    </style>
+</head>
+<body>
+    <div class="background"></div>
+    <div class="pixel-mountain"></div>
+
+    <button class="home-button" onclick="window.location.href='Gameweb.html'">回首頁</button>
+
+    <div class="container">
+        <div class="game-area">
+            <div class="board-container">
+                <canvas id="gameCanvas" width="600" height="600"></canvas>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="info-panel">
+                <div class="score">分數: <span id="score">0</span></div>
+                <button onclick="startGame()">開始遊戲</button>
+                <button onclick="restartGame()">重新開始</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const gridSize = 20;
+        const tileCount = canvas.width / gridSize;
+
+        const game = {
+            snake: [],
+            food: {},
+            direction: { x: 0, y: 0 },
+            speed: 150,
+            score: 0,
+            isRunning: false,
+            gameLoop: null,
+            lastUpdateTime: 0,
+            accumulator: 0,
+            canTurn: true,  // 添加轉向控制標誌
+            turnCooldown: 50,  // 轉向冷卻時間（毫秒）
+
+            init() {
+                this.snake = [
+                    { x: 10, y: 10 }
+                ];
+                this.score = 0;
+                this.speed = 150;  // 重置速度
+                this.generateFood();
+                document.getElementById('score').textContent = this.score;
+                this.drawGame();
+            },
+
+            generateFood() {
+                this.food = {
+                    x: Math.floor(Math.random() * tileCount),
+                    y: Math.floor(Math.random() * tileCount),
+                    color: this.getRandomFoodColor()
+                };
+                
+                // 確保食物不會生成在蛇身上
+                while (this.snake.some(part => part.x === this.food.x && part.y === this.food.y)) {
+                    this.food.x = Math.floor(Math.random() * tileCount);
+                    this.food.y = Math.floor(Math.random() * tileCount);
+                }
+            },
+
+            getRandomFoodColor() {
+                const colors = [
+                    '#ff0000',  // 紅蘋果
+                    '#ff6b6b',  // 粉紅蘋果
+                    '#ffd700',  // 金黃蘋果
+                    '#43a047',  // 青蘋果
+                    '#8e44ad'   // 紫蘋果
+                ];
+                return colors[Math.floor(Math.random() * colors.length)];
+            },
+
+            update(currentTime) {
+                if (!this.isRunning) return;
+                
+                if (!this.lastUpdateTime) {
+                    this.lastUpdateTime = currentTime;
+                }
+                
+                const deltaTime = currentTime - this.lastUpdateTime;
+                this.lastUpdateTime = currentTime;
+                this.accumulator += deltaTime;
+                
+                // 根據速度更新遊戲邏輯
+                while (this.accumulator >= this.speed) {
+                    this.updateGameLogic();
+                    this.accumulator -= this.speed;
+                }
+                
+                // 計算插值因子
+                const alpha = this.accumulator / this.speed;
+                this.drawGame(alpha);
+                
+                requestAnimationFrame((time) => this.update(time));
+            },
+
+            updateGameLogic() {
+                const newHead = {
+                    x: this.snake[0].x + this.direction.x,
+                    y: this.snake[0].y + this.direction.y,
+                    fromX: this.snake[0].x,
+                    fromY: this.snake[0].y
+                };
+
+                if (this.checkCollision(newHead)) {
+                    this.gameOver();
+                    return;
+                }
+
+                this.snake.unshift(newHead);
+
+                if (newHead.x === this.food.x && newHead.y === this.food.y) {
+                    this.score += 10;
+                    document.getElementById('score').textContent = this.score;
+                    this.generateFood();
+                    if (this.speed > 50) {
+                        this.speed -= 2;
+                    }
+                } else {
+                    this.snake.pop();
+                }
+            },
+
+            checkCollision(head) {
+                // 檢查牆壁碰撞
+                if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
+                    return true;
+                }
+
+                // 檢查自身碰撞
+                return this.snake.some(part => part.x === head.x && part.y === head.y);
+            },
+
+            drawGame(alpha) {
+                // 清空畫布
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // 繪製網格
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+                ctx.lineWidth = 1;
+                for (let i = 0; i < tileCount; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(i * gridSize, 0);
+                    ctx.lineTo(i * gridSize, canvas.height);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(0, i * gridSize);
+                    ctx.lineTo(canvas.width, i * gridSize);
+                    ctx.stroke();
+                }
+
+                // 繪製食物
+                ctx.save();
+                const foodX = this.food.x * gridSize;
+                const foodY = this.food.y * gridSize;
+                ctx.translate(foodX, foodY);  // 移動到格子的左上角
+
+                // 繪製蘋果 - 調整大小和位置
+                const scale = 0.8;  // 控制蘋果大小
+                ctx.scale(scale, scale);
+
+                // 將蘋果置中
+                ctx.translate(gridSize/2/scale, gridSize/2/scale);
+
+                // 蘋果主體
+                ctx.beginPath();
+                ctx.moveTo(0, -5);
+                ctx.quadraticCurveTo(5, -10, 10, -5);
+                ctx.quadraticCurveTo(15, 5, 0, 10);
+                ctx.quadraticCurveTo(-15, 5, -10, -5);
+                ctx.quadraticCurveTo(-5, -10, 0, -5);
+                ctx.fillStyle = this.food.color;
+                ctx.fill();
+
+                // 蘋果葉子
+                ctx.beginPath();
+                ctx.moveTo(0, -5);
+                ctx.quadraticCurveTo(3, -8, 5, -7);
+                ctx.quadraticCurveTo(2, -6, 0, -5);
+                ctx.fillStyle = '#2ecc71';
+                ctx.fill();
+
+                // 蘋果高光
+                ctx.beginPath();
+                ctx.moveTo(-5, 0);
+                ctx.quadraticCurveTo(-7, 2, -6, 4);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.stroke();
+
+                ctx.restore();
+
+                // 繪製蛇
+                this.snake.forEach((part, index) => {
+                    let renderX = part.x;
+                    let renderY = part.y;
+                    
+                    // 對於移動中的部分進行插值
+                    if (part.fromX !== undefined) {
+                        renderX = part.fromX + (part.x - part.fromX) * alpha;
+                        renderY = part.fromY + (part.y - part.fromY) * alpha;
+                    }
+                    
+                    const x = renderX * gridSize;
+                    const y = renderY * gridSize;
+                    
+                    if (index === 0) {
+                        // 繪製蛇頭
+                        ctx.save();
+                        ctx.translate(x + gridSize/2, y + gridSize/2);
+                        let angle = 0;
+                        if (this.direction.x === 1) angle = -Math.PI/2;    // 向右
+                        if (this.direction.x === -1) angle = Math.PI/2;   // 向左
+                        if (this.direction.y === -1) angle = Math.PI;     // 向上
+                        if (this.direction.y === 1) angle = 0;            // 向下
+                        ctx.rotate(angle);
+                        ctx.translate(-gridSize/2, -gridSize/2);
+
+                        // 繪製蛇頭 SVG
+                        const headPath = new Path2D();
+                        // 主要頭部形狀
+                        headPath.moveTo(4, 10);
+                        headPath.quadraticCurveTo(10, 0, 16, 10);
+                        headPath.quadraticCurveTo(10, 14, 4, 10);
+                        ctx.fillStyle = '#2ecc71';
+                        ctx.fill(headPath);
+
+                        // 眼睛
+                        ctx.fillStyle = 'white';
+                        ctx.beginPath();
+                        ctx.arc(7, 8, 2.5, 0, Math.PI * 2);
+                        ctx.arc(13, 8, 2.5, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        // 眼珠
+                        ctx.fillStyle = 'black';
+                        ctx.beginPath();
+                        ctx.arc(7, 8, 1, 0, Math.PI * 2);
+                        ctx.arc(13, 8, 1, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        // 舌頭
+                        ctx.strokeStyle = '#e74c3c';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(10, 12);
+                        ctx.lineTo(10, 16);
+                        ctx.lineTo(8, 18);
+                        ctx.moveTo(10, 16);
+                        ctx.lineTo(12, 18);
+                        ctx.stroke();
+
+                        ctx.restore();
+                    } else {
+                        // 繪製蛇身
+                        const gradient = ctx.createRadialGradient(
+                            x + gridSize/2, y + gridSize/2, 0,
+                            x + gridSize/2, y + gridSize/2, gridSize/2
+                        );
+                        gradient.addColorStop(0, '#2ecc71');
+                        gradient.addColorStop(1, '#27ae60');
+
+                        ctx.fillStyle = gradient;
+                        ctx.beginPath();
+                        ctx.arc(x + gridSize/2, y + gridSize/2, gridSize/2 - 1, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        // 添加花紋
+                        if (index % 2 === 0) {
+                            ctx.fillStyle = '#27ae60';
+                            ctx.beginPath();
+                            ctx.arc(x + gridSize/2, y + gridSize/2, gridSize/4, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    }
+                });
+            },
+
+            gameOver() {
+                this.isRunning = false;
+                clearInterval(this.gameLoop);
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#fff';
+                ctx.font = '48px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('遊戲結束!', canvas.width/2, canvas.height/2);
+                ctx.font = '24px Arial';
+                ctx.fillText(`最終分數: ${this.score}`, canvas.width/2, canvas.height/2 + 40);
+                ctx.fillText('按空白鍵重新開始', canvas.width/2, canvas.height/2 + 80);  // 添加提示文字
+            },
+
+            // 添加轉向方法
+            changeDirection(newDirection) {
+                if (!this.canTurn) return;
+                
+                // 檢查是否是有效的轉向（不能直接轉向相反方向）
+                if (this.direction.x !== -newDirection.x && 
+                    this.direction.y !== -newDirection.y) {
+                    this.direction = newDirection;
+                    this.canTurn = false;
+                    
+                    // 設置轉向冷卻
+                    setTimeout(() => {
+                        this.canTurn = true;
+                    }, this.turnCooldown);
+                }
+            }
+        };
+
+        // 修改鍵盤控制
+        document.addEventListener('keydown', (e) => {
+            // 添加空白鍵重新開始
+            if (e.code === 'Space') {
+                if (!game.isRunning) {  // 只有在遊戲結束時才能重新開始
+                    restartGame();
+                    return;
+                }
+            }
+
+            if (!game.isRunning) return;
+
+            switch(e.key) {
+                case 'ArrowUp':
+                    game.changeDirection({ x: 0, y: -1 });
+                    break;
+                case 'ArrowDown':
+                    game.changeDirection({ x: 0, y: 1 });
+                    break;
+                case 'ArrowLeft':
+                    game.changeDirection({ x: -1, y: 0 });
+                    break;
+                case 'ArrowRight':
+                    game.changeDirection({ x: 1, y: 0 });
+                    break;
+            }
+        });
+
+        // 修改開始遊戲函數
+        function startGame() {
+            game.init();
+            
+            // 添加倒數計時
+            let count = 3;
+            game.isRunning = false;  // 確保倒數時遊戲不會開始
+            
+            function countdown() {
+                // 清空畫布並繪製當前遊戲狀態
+                game.drawGame(0);
+                
+                // 繪製倒數數字
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#fff';
+                ctx.font = '120px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                if (count > 0) {
+                    ctx.fillText(count, canvas.width/2, canvas.height/2);
+                    count--;
+                    setTimeout(countdown, 1000);
+                } else {
+                    // 顯示 "開始!"
+                    ctx.fillText('開始!', canvas.width/2, canvas.height/2);
+                    setTimeout(() => {
+                        // 開始遊戲
+                        game.direction = { x: 1, y: 0 };
+                        game.isRunning = true;
+                        game.canTurn = true;
+                        game.lastUpdateTime = 0;
+                        game.accumulator = 0;
+                        requestAnimationFrame((time) => game.update(time));
+                    }, 1000);
+                }
+            }
+            
+            countdown();
+        }
+
+        function restartGame() {
+            if (game.gameLoop) clearInterval(game.gameLoop);
+            startGame();
+        }
+
+        // 初始化遊戲
+        game.init();
+
+        // 在 game 物件之前添加音樂系統
+        const bgMusic = {
+            audioContext: null,
+            oscillators: [],
+            gainNodes: [],
+            isPlaying: false,
+            
+            init() {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            },
+            
+            createMelody() {
+                // 快樂的旋律音符
+                const melody = [
+                    { note: 'E4', duration: 0.2 },
+                    { note: 'G4', duration: 0.2 },
+                    { note: 'C5', duration: 0.4 },
+                    { note: 'G4', duration: 0.2 },
+                    { note: 'A4', duration: 0.2 },
+                    { note: 'B4', duration: 0.4 },
+                    { note: 'A4', duration: 0.2 },
+                    { note: 'G4', duration: 0.2 },
+                    { note: 'E4', duration: 0.4 },
+                    { note: 'G4', duration: 0.2 },
+                    { note: 'F4', duration: 0.2 },
+                    { note: 'E4', duration: 0.4 }
+                ];
+                
+                const noteToFreq = {
+                    'C4': 261.63, 'D4': 293.66, 'E4': 329.63, 'F4': 349.23,
+                    'G4': 392.00, 'A4': 440.00, 'B4': 493.88, 'C5': 523.25
+                };
+                
+                let time = 0;
+                melody.forEach(({ note, duration }) => {
+                    setTimeout(() => {
+                        if (!this.isPlaying) return;
+                        
+                        const osc = this.audioContext.createOscillator();
+                        const gain = this.audioContext.createGain();
+                        
+                        osc.type = 'triangle';  // 使用三角波產生更柔和的聲音
+                        osc.frequency.value = noteToFreq[note];
+                        
+                        gain.gain.value = 0.1;  // 降低音量
+                        
+                        osc.connect(gain);
+                        gain.connect(this.audioContext.destination);
+                        
+                        osc.start();
+                        this.oscillators.push(osc);
+                        this.gainNodes.push(gain);
+                        
+                        // 淡出效果
+                        setTimeout(() => {
+                            gain.gain.exponentialRampToValueAtTime(
+                                0.001,
+                                this.audioContext.currentTime + 0.1
+                            );
+                            setTimeout(() => {
+                                osc.stop();
+                                gain.disconnect();
+                            }, 100);
+                        }, duration * 1000 - 100);
+                    }, time * 1000);
+                    
+                    time += duration;
+                });
+                
+                // 循環播放
+                setTimeout(() => {
+                    this.oscillators = [];
+                    this.gainNodes = [];
+                    if (this.isPlaying) {
+                        this.createMelody();
+                    }
+                }, time * 1000);
+            },
+            
+            start() {
+                if (!this.isPlaying) {
+                    this.isPlaying = true;
+                    this.createMelody();
+                }
+            },
+            
+            stop() {
+                this.isPlaying = false;
+                this.oscillators.forEach(osc => {
+                    try {
+                        osc.stop();
+                    } catch (e) {}
+                });
+                this.oscillators = [];
+                this.gainNodes = [];
+            }
+        };
+
+        // 添加音樂控制按鈕
+        const musicBtn = document.createElement('button');
+        musicBtn.innerHTML = '🎵';
+        musicBtn.style.position = 'fixed';
+        musicBtn.style.top = '20px';
+        musicBtn.style.right = '20px';
+        musicBtn.style.fontSize = '24px';
+        musicBtn.style.padding = '10px';
+        musicBtn.style.background = 'rgba(0, 0, 0, 0.3)';
+        musicBtn.style.border = '2px solid rgba(255, 255, 255, 0.5)';
+        musicBtn.style.borderRadius = '50%';
+        musicBtn.style.color = 'white';
+        musicBtn.style.cursor = 'pointer';
+        musicBtn.style.zIndex = '1000';
+        musicBtn.style.width = '50px';
+        musicBtn.style.height = '50px';
+        musicBtn.style.display = 'flex';
+        musicBtn.style.justifyContent = 'center';
+        musicBtn.style.alignItems = 'center';
+        musicBtn.style.transition = 'all 0.3s ease';
+        musicBtn.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.2)';
+
+        let isMusicPlaying = true;
+
+        // 初始化並自動開始播放音樂
+        bgMusic.init();
+        bgMusic.start();
+
+        musicBtn.addEventListener('click', () => {
+            if (isMusicPlaying) {
+                bgMusic.stop();
+                musicBtn.style.opacity = '0.5';
+            } else {
+                bgMusic.start();
+                musicBtn.style.opacity = '1';
+            }
+            isMusicPlaying = !isMusicPlaying;
+        });
+
+        document.body.appendChild(musicBtn);
+    </script>
+</body>
+</html> 

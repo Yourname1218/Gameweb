@@ -468,7 +468,8 @@
             piece: null,
             nextPiece: null,
             position: {x: 0, y: 0},
-            isGameOver: false
+            isGameOver: false,
+            lockDelay: false
         };
 
         // 在 script 開頭添加按鍵狀態追蹤
@@ -556,7 +557,8 @@
                 piece: createPiece(),
                 nextPiece: createPiece(),
                 position: {x: 0, y: 0},
-                isGameOver: false
+                isGameOver: false,
+                lockDelay: false
             };
 
             // 設置初始位置
@@ -833,7 +835,8 @@
                 piece: null,
                 nextPiece: null,
                 position: {x: 0, y: 0},
-                isGameOver: false
+                isGameOver: false,
+                lockDelay: false
             };
 
             // 重置按鍵狀態
@@ -1090,13 +1093,40 @@
 
         // 方塊下落
         function dropPiece() {
+            // 檢查是否可以繼續下落
+            const canMoveDown = () => {
+                gameState.position.y++;
+                const collided = collide();
+                gameState.position.y--;
+                return !collided;
+            };
+
+            if (!canMoveDown()) {
+                // 方塊已經到底
+                if (!gameState.lockDelay) {  // 使用 gameState 而不是 this
+                    gameState.lockDelay = true;
+                    setTimeout(() => {
+                        if (!canMoveDown()) {  // 再次檢查，以防在延遲期間有移動
+                            mergePiece();
+                            resetPiece();
+                            clearLines();
+                        }
+                        gameState.lockDelay = false;
+                    }, 900);  // 100毫秒的延遲
+                }
+                return;
+            }
+            
+            // 如果還能下落，清除鎖定延遲標記
+            gameState.lockDelay = false;
+            
+            // 原有的下落邏輯
             gameState.position.y++;
             if (collide()) {
                 gameState.position.y--;
-                mergePiece();
-                resetPiece();
-                clearLines();
+                return false;
             }
+            return true;
         }
 
         // 合併方塊到遊戲板

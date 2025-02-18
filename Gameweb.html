@@ -413,11 +413,11 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         
-        const games = [
-            { name: '俄羅斯方塊', x: 250, y: 200 },  // 左邊按鈕往左移
-            { name: '圍棋', x: 550, y: 200 },       // 右邊按鈕往右移
-            { name: '象棋', x: 250, y: 400 },       // 左邊按鈕往左移
-            { name: '跳棋', x: 550, y: 400 }        // 右邊按鈕往右移
+        const buttons = [
+            { name: '俄羅斯方塊', x: 250, y: 200 },
+            { name: '圍棋', x: 550, y: 200 },
+            { name: '五子棋', x: 250, y: 400 },
+            { name: '貪吃蛇', x: 550, y: 400 }
         ];
 
         // 添加按鈕動畫狀態
@@ -488,13 +488,13 @@
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             // 繪製遊戲選項
-            games.forEach((game, index) => {
-                drawPixelButton(game.x - 80, game.y - 40, 160, 80, index);
+            buttons.forEach((button, index) => {
+                drawPixelButton(button.x - 80, button.y - 40, 160, 80, index);
                 
                 // 文字位置跟隨按鈕移動
                 const textOffset = Math.sin(Date.now() * 0.002 + index * Math.PI/2) * 5;
-                let textX = game.x - 70 + textOffset;
-                let textY = game.y + 10;
+                let textX = button.x - 70 + textOffset;
+                let textY = button.y + 10;
                 
                 if (hoveredButton === index) {
                     textX += Math.sin(Date.now() * 0.1) * 2;
@@ -504,7 +504,7 @@
                 ctx.fillStyle = '#FFFFFF';
                 ctx.shadowColor = '#000000';
                 ctx.shadowBlur = 2;
-                drawPixelText(game.name, textX, textY, 20); // 增大文字大小
+                drawPixelText(button.name, textX, textY, 20); // 增大文字大小
                 ctx.shadowBlur = 0;
             });
 
@@ -518,9 +518,9 @@
             const y = e.clientY - rect.top;
 
             let found = false;
-            games.forEach((game, index) => {
-                if (x >= game.x - 80 && x <= game.x + 80 &&
-                    y >= game.y - 40 && y <= game.y + 40) {
+            buttons.forEach((button, index) => {
+                if (x >= button.x - 80 && x <= button.x + 80 &&
+                    y >= button.y - 40 && y <= button.y + 40) {
                     hoveredButton = index;
                     found = true;
                     canvas.style.cursor = 'pointer';
@@ -539,15 +539,17 @@
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
 
-            games.forEach((game, index) => {
-                if (x >= game.x - 80 && x <= game.x + 80 &&
-                    y >= game.y - 40 && y <= game.y + 40) {
-                    if (game.name === '俄羅斯方塊') {
+            buttons.forEach((button, index) => {
+                if (x >= button.x - 80 && x <= button.x + 80 &&
+                    y >= button.y - 40 && y <= button.y + 40) {
+                    if (button.name === '俄羅斯方塊') {
                         window.location.href = 'tetris.html';
-                    } else if (game.name === '圍棋') {
+                    } else if (button.name === '圍棋') {
                         window.location.href = 'go.html';
-                    } else {
-                        alert(`即將開始 ${game.name}！`);
+                    } else if (button.name === '五子棋') {
+                        window.location.href = 'gomoku.html';
+                    } else if (button.name === '貪吃蛇') {
+                        window.location.href = 'snake.html';
                     }
                 }
             });
