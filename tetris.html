@@ -297,19 +297,15 @@
     </style>
 </head>
 <body>
-    <button class="home-button" onclick="window.location.href='Gameweb.html'">回首頁</button>
     <div class="background"></div>
     <div class="pixel-mountain"></div>
-    <div class="pixel-cloud cloud-large" style="top: 15%; animation-duration: 30s;"></div>
-    <div class="pixel-cloud cloud-medium" style="top: 25%; animation-duration: 25s;"></div>
-    <div class="pixel-cloud cloud-small" style="top: 35%; animation-duration: 20s;"></div>
-    <div class="pixel-cloud cloud-large" style="top: 45%; animation-duration: 28s;"></div>
-    <div class="pixel-cloud cloud-medium" style="top: 55%; animation-duration: 22s;"></div>
-    <div class="pixel-star" style="top: 10%; left: 20%"></div>
-    <div class="pixel-star" style="top: 15%; left: 80%"></div>
-    <div class="pixel-star" style="top: 25%; left: 40%"></div>
-    <div class="pixel-star" style="top: 30%; left: 60%"></div>
-
+    
+    <!-- 添加雲朵和鳥的容器 -->
+    <div id="clouds-container"></div>
+    <div id="birds-container"></div>
+    
+    <button class="home-button" onclick="window.location.href='Gameweb.html'">回首頁</button>
+    
     <div class="game-container">
         <div class="game-area">
             <canvas id="mainBoard" class="main-board" width="300" height="600"></canvas>
@@ -723,36 +719,104 @@
             sounds.drop.play();
         }
 
-        // 遊戲結束處理
+        // 修改遊戲結束處理函數
         function gameOver() {
             gameState.isGameOver = true;
             sounds.gameOver.play();
+            bgMusic.stop();
             
-            // 移除鍵盤控制
+            // 創建結束動畫容器
+            const gameOverContainer = document.createElement('div');
+            gameOverContainer.style.cssText = `
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                background: rgba(0, 0, 0, 0.8);
+                z-index: 1000;
+                animation: fadeIn 0.5s ease-out;
+            `;
+
+            // 創建 GAME OVER 文字
+            const gameOverText = document.createElement('div');
+            gameOverText.className = 'game-over-text';
+            gameOverText.textContent = 'GAME OVER';
+            gameOverText.style.cssText = `
+                color: #ff0000;
+                font-size: 48px;
+                font-family: 'Press Start 2P', cursive;
+                text-shadow: 4px 4px 0px #000;
+                margin-bottom: 20px;
+                animation: gameOverDrop 1s ease-out, glowText 1.5s infinite alternate;
+            `;
+
+            // 創建分數顯示
+            const scoreText = document.createElement('div');
+            scoreText.textContent = `分數: ${gameState.score}`;
+            scoreText.style.cssText = `
+                color: #fff;
+                font-size: 24px;
+                font-family: 'Press Start 2P', cursive;
+                margin-bottom: 20px;
+                animation: fadeIn 1s ease-out 0.5s both;
+            `;
+
+            // 創建重新開始提示
+            const restartText = document.createElement('div');
+            restartText.textContent = '按空格鍵重新開始';
+            restartText.style.cssText = `
+                color: #fff;
+                font-size: 16px;
+                font-family: 'Press Start 2P', cursive;
+                animation: blink 1s infinite;
+            `;
+
+            // 添加動畫樣式
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+
+                @keyframes gameOverDrop {
+                    0% { transform: translateY(-100vh); }
+                    60% { transform: translateY(20px); }
+                    80% { transform: translateY(-10px); }
+                    100% { transform: translateY(0); }
+                }
+
+                @keyframes glowText {
+                    from { text-shadow: 4px 4px 0px #000; }
+                    to { text-shadow: 4px 4px 20px #ff0000; }
+                }
+
+                @keyframes blink {
+                    0%, 100% { opacity: 1; }
+                    50% { opacity: 0.3; }
+                }
+            `;
+
+            document.head.appendChild(style);
+            gameOverContainer.appendChild(gameOverText);
+            gameOverContainer.appendChild(scoreText);
+            gameOverContainer.appendChild(restartText);
+            document.querySelector('.game-container').appendChild(gameOverContainer);
+
+            // 移除所有遊戲控制
             document.removeEventListener('keydown', handleInput);
             document.removeEventListener('keyup', handleInput);
 
-            const gameOverDiv = document.createElement('div');
-            gameOverDiv.className = 'game-over';
-            gameOverDiv.style.position = 'absolute';
-            gameOverDiv.style.top = '50%';
-            gameOverDiv.style.left = '50%';
-            gameOverDiv.style.transform = 'translate(-50%, -50%)';
-            gameOverDiv.style.color = '#fff';
-            gameOverDiv.style.fontSize = '40px';
-            gameOverDiv.style.textAlign = 'center';
-            gameOverDiv.innerHTML = `
-                遊戲結束<br>
-                分數: ${gameState.score}<br>
-                <span style="font-size: 20px">按空格鍵重新開始</span>
-            `;
-            document.body.appendChild(gameOverDiv);
-
             // 監聽重新開始
             const restartListener = (e) => {
-                if (e.keyCode === 32) {
+                if (e.keyCode === 32) { // 空格鍵
                     document.removeEventListener('keydown', restartListener);
-                    gameOverDiv.remove();
+                    gameOverContainer.remove();
                     resetGame();
                 }
             };
@@ -788,6 +852,9 @@
             updateScore(0);
             updateLevel(1);
             startCountdown(initGame);
+            if (bgMusic.isPlaying) {
+                bgMusic.start();
+            }
         }
 
         // 創建新方塊
@@ -1181,30 +1248,52 @@
             },
             
             createMelody() {
-                const notes = [
-                    440.00,  // A4
-                    493.88,  // B4
-                    523.25,  // C5
-                    587.33,  // D5
-                    659.25,  // E5
-                    698.46,  // F5
-                    783.99   // G5
+                const notes = {
+                    'C4': 261.63, 'D4': 293.66, 'E4': 329.63, 'F4': 349.23,
+                    'G4': 392.00, 'A4': 440.00, 'B4': 493.88, 'C5': 523.25,
+                    'D5': 587.33, 'E5': 659.25
+                };
+
+                // 更輕快的旋律序列
+                const melody = [
+                    {note: 'E4', duration: 0.25}, {note: 'G4', duration: 0.25},
+                    {note: 'C5', duration: 0.5},
+                    {note: 'D4', duration: 0.25}, {note: 'F4', duration: 0.25},
+                    {note: 'B4', duration: 0.5},
+                    {note: 'C4', duration: 0.25}, {note: 'E4', duration: 0.25},
+                    {note: 'A4', duration: 0.5},
+                    {note: 'G4', duration: 0.25}, {note: 'B4', duration: 0.25},
+                    {note: 'E5', duration: 0.5},
+                    
+                    {note: 'C5', duration: 0.25}, {note: 'A4', duration: 0.25},
+                    {note: 'F4', duration: 0.5},
+                    {note: 'B4', duration: 0.25}, {note: 'G4', duration: 0.25},
+                    {note: 'D4', duration: 0.5},
+                    {note: 'A4', duration: 0.25}, {note: 'F4', duration: 0.25},
+                    {note: 'D4', duration: 0.5},
+                    {note: 'G4', duration: 0.25}, {note: 'E4', duration: 0.25},
+                    {note: 'C4', duration: 0.5}
                 ];
+
+                let time = 0;
+                const baseVolume = 0.08;  // 稍微調整音量
                 
-                // 修改旋律和節奏
-                const melody = [0, 2, 4, 2, 0, 2, 4, 6, 4, 2, 0]; // 更長的旋律
-                const duration = 0.3; // 稍微加快節奏
-                
-                melody.forEach((noteIndex, i) => {
+                melody.forEach(({note, duration}) => {
                     setTimeout(() => {
                         if (this.isPlaying) {
                             const osc = this.context.createOscillator();
                             const gain = this.context.createGain();
                             
-                            osc.type = 'triangle';
-                            osc.frequency.setValueAtTime(notes[noteIndex], this.context.currentTime);
+                            // 使用混合音色
+                            osc.type = 'triangle';  // 使用三角波獲得更清脆的音色
                             
-                            gain.gain.setValueAtTime(0.05, this.context.currentTime); // 降低音量
+                            osc.frequency.setValueAtTime(notes[note], this.context.currentTime);
+                            
+                            // 更快的音量包絡
+                            gain.gain.setValueAtTime(0, this.context.currentTime);
+                            gain.gain.linearRampToValueAtTime(baseVolume, this.context.currentTime + 0.05);
+                            gain.gain.linearRampToValueAtTime(baseVolume * 0.6, this.context.currentTime + duration * 0.7);
+                            gain.gain.linearRampToValueAtTime(0, this.context.currentTime + duration);
                             
                             osc.connect(gain);
                             gain.connect(this.context.destination);
@@ -1215,7 +1304,9 @@
                             this.oscillators.push(osc);
                             this.gainNodes.push(gain);
                         }
-                    }, i * duration * 1000);
+                    }, time * 1000);
+                    
+                    time += duration;
                 });
                 
                 // 循環播放
@@ -1225,7 +1316,7 @@
                     if (this.isPlaying) {
                         this.createMelody();
                     }
-                }, melody.length * duration * 1000);
+                }, time * 1000);
             },
             
             start() {
@@ -1283,20 +1374,6 @@
             
             document.body.appendChild(musicBtn);
         });
-
-        // 在遊戲結束時停止背景音樂
-        function gameOver() {
-            // ... 原有的遊戲結束代碼 ...
-            bgMusic.stop();
-        }
-
-        // 在重新開始遊戲時重新播放背景音樂
-        function resetGame() {
-            // ... 原有的重置代碼 ...
-            if (bgMusic.isPlaying) {
-                bgMusic.start();
-            }
-        }
     </script>
 </body>
 </html> 

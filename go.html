@@ -11,8 +11,8 @@
             background-color: #000;
             font-family: 'Press Start 2P', cursive;
             display: flex;
-            justify-content: center;
-            align-items: center;
+            justify-content: center;  /* 水平置中 */
+            align-items: center;      /* 垂直置中 */
             min-height: 100vh;
             overflow: hidden;
             position: relative;
@@ -49,8 +49,13 @@
         }
 
         .game-container {
+            position: absolute;    /* 添加絕對定位 */
+            top: 50%;             /* 從頂部偏移 50% */
+            left: 50%;           /* 從左側偏移 50% */
+            transform: translate(-50%, -50%);  /* 使用 transform 進行精確置中 */
             display: flex;
             align-items: flex-start;
+            gap: 20px;
             background: rgba(0, 0, 0, 0.7);
             padding: 20px;
             border-radius: 10px;
@@ -64,9 +69,13 @@
                 inset -4px 4px 0 0 #873000,
                 inset 4px 4px 0 0 #873000,
                 0 0 0 4px #e75a10;
+            z-index: 1;  /* 確保遊戲容器在背景之上 */
         }
 
         .board {
+            display: flex;
+            justify-content: center;
+            align-items: center;
             width: 600px;
             height: 600px;
             background: linear-gradient(45deg, #deb887, #cd853f);
@@ -75,7 +84,6 @@
             box-shadow: 
                 0 0 20px rgba(0, 0, 0, 0.5),
                 inset 0 0 60px rgba(139, 69, 19, 0.3);
-            margin-right: 20px;
             border-radius: 4px;
         }
 
@@ -175,11 +183,104 @@
             background: #666;
             transform: scale(1.05);
         }
+
+        /* 添加雲和鳥的樣式 */
+        .pixel-cloud {
+            position: fixed;
+            z-index: -1;
+            opacity: 0.9;
+        }
+
+        .cloud-svg {
+            width: 100%;
+            height: 100%;
+            fill: white;
+            filter: url(#pixelate);
+        }
+
+        .bird {
+            position: absolute;
+            width: 50px;
+            height: 30px;
+            z-index: -1;
+            opacity: 0;
+            transform-origin: center;
+        }
+
+        .bird-svg {
+            width: 100%;
+            height: 100%;
+            fill: #333;
+        }
+
+        .bird .wing {
+            transform-origin: 20px 15px;
+            animation: flapWing 0.4s infinite alternate ease-in-out;
+        }
+
+        @keyframes flapWing {
+            0% { transform: rotate(-30deg) scale(1.1); }
+            100% { transform: rotate(30deg) scale(0.9); }
+        }
+
+        @keyframes flyDiagonal1 {
+            0% { 
+                transform: translate(-100vw, 50vh) rotate(-20deg); 
+                opacity: 1;
+            }
+            100% { 
+                transform: translate(100vw, -50vh) rotate(-20deg); 
+                opacity: 1;
+            }
+        }
+
+        @keyframes flyDiagonal2 {
+            0% { 
+                transform: translate(-100vw, -50vh) rotate(20deg); 
+                opacity: 1;
+            }
+            100% { 
+                transform: translate(100vw, 50vh) rotate(20deg); 
+                opacity: 1;
+            }
+        }
+
+        @keyframes flyDiagonal3 {
+            0% { 
+                transform: translate(100vw, 50vh) rotate(160deg); 
+                opacity: 1;
+            }
+            100% { 
+                transform: translate(-100vw, -50vh) rotate(160deg); 
+                opacity: 1;
+            }
+        }
+
+        @keyframes flyDiagonal4 {
+            0% { 
+                transform: translate(100vw, -50vh) rotate(200deg); 
+                opacity: 1;
+            }
+            100% { 
+                transform: translate(-100vw, 50vh) rotate(200deg); 
+                opacity: 1;
+            }
+        }
+
+        /* 修改 canvas 樣式 */
+        #goBoard {
+            display: block;
+            margin: auto;
+        }
     </style>
 </head>
 <body>
     <div class="background"></div>
     <div class="pixel-mountain"></div>
+    
+    <!-- 添加雲朵和鳥的容器 -->
+    <div id="clouds-container"></div>
+    <div id="birds-container"></div>
     
     <button class="home-button" onclick="window.location.href='Gameweb.html'">回首頁</button>
     
@@ -202,6 +303,22 @@
             </div>
         </div>
     </div>
+
+    <!-- 添加音樂控制按鈕 -->
+    <button id="musicBtn" style="position: fixed; top: 20px; right: 20px; z-index: 1000;">🎵</button>
+
+    <!-- 添加像素化濾鏡 -->
+    <svg class="pixelate-filter">
+        <defs>
+            <filter id="pixelate">
+                <feFlood x="4" y="4" height="2" width="2"/>
+                <feComposite width="8" height="8"/>
+                <feTile result="a"/>
+                <feComposite in="SourceGraphic" in2="a" operator="in"/>
+                <feMorphology operator="dilate" radius="1"/>
+            </filter>
+        </defs>
+    </svg>
 
     <script>
         const canvas = document.getElementById('goBoard');
@@ -414,7 +531,9 @@
 
             // 如果是單人模式且輪到白棋，則觸發 AI 移動
             if (gameState.gameMode === 'single' && gameState.currentPlayer === 'white') {
-                makeAIMove();
+                setTimeout(() => {
+                    makeAIMove();
+                }, 500);
             }
         }
 
@@ -531,31 +650,229 @@
             }
         });
 
-        // AI 移動函數
+        // 修改 AI 移動函數，使用更智能的策略
         function makeAIMove() {
             if (gameState.gameOver || gameState.currentPlayer !== 'white') return;
 
-            // 簡單的 AI 邏輯：尋找第一個有效的移動
-            let validMoves = [];
+            // 獲取所有可能的移動並評分
+            let bestMove = null;
+            let bestScore = -Infinity;
+            
             for (let i = 0; i < BOARD_SIZE; i++) {
                 for (let j = 0; j < BOARD_SIZE; j++) {
                     if (isValidMove(i, j)) {
-                        validMoves.push([i, j]);
+                        const score = evaluateMove(i, j);
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestMove = [i, j];
+                        }
                     }
                 }
             }
 
-            if (validMoves.length > 0) {
-                // 隨機選擇一個有效位置
-                const [row, col] = validMoves[Math.floor(Math.random() * validMoves.length)];
+            if (bestMove) {
                 setTimeout(() => {
-                    placeStone(row, col);
+                    placeStone(bestMove[0], bestMove[1]);
                     checkGameStatus();
-                }, 500); // 延遲500ms，使移動更自然
+                }, 500);
             } else {
-                // 如果沒有有效移動，則虛手
                 handlePass();
             }
+        }
+
+        // 修改評估移動的分數函數
+        function evaluateMove(row, col) {
+            let score = 0;
+            
+            // 1. 基礎分數：降低隨機性
+            score += Math.random() * 2;
+            
+            // 2. 檢查提子機會（提高權重）
+            const tempBoard = gameState.board.map(row => [...row]);
+            tempBoard[row][col] = 'white';
+            const captures = getCaptures(row, col, tempBoard);
+            score += captures.length * 50;  // 提高提子的價值
+            
+            // 3. 檢查周圍八個方向（更複雜的模式識別）
+            const directions = [
+                [-1, -1], [-1, 0], [-1, 1],
+                [0, -1],           [0, 1],
+                [1, -1],  [1, 0],  [1, 1]
+            ];
+            
+            let pattern = '';  // 用於識別棋型
+            let friendlyStones = 0;
+            let enemyStones = 0;
+            let liberties = 0;
+            
+            directions.forEach(([dx, dy]) => {
+                const newRow = row + dx;
+                const newCol = col + dy;
+                
+                if (newRow >= 0 && newRow < BOARD_SIZE && newCol >= 0 && newCol < BOARD_SIZE) {
+                    const stone = gameState.board[newRow][newCol];
+                    pattern += stone === 'white' ? 'W' : (stone === 'black' ? 'B' : 'E');
+                    
+                    if (stone === 'white') {
+                        friendlyStones++;
+                        score += 15;  // 提高連接己方棋子的價值
+                    } else if (stone === 'black') {
+                        enemyStones++;
+                        score += 8;   // 靠近對手棋子也有價值
+                    } else {
+                        liberties++;
+                        score += 3;   // 保持適當氣數
+                    }
+                }
+            });
+            
+            // 4. 棋型識別和評分
+            if (pattern.includes('WWW')) score += 40;  // 連續三子
+            if (pattern.includes('WW')) score += 25;   // 連續兩子
+            if (pattern.includes('BWB')) score += 30;  // 斷開對手
+            if (pattern.includes('BBB')) score -= 35;  // 阻止對手連續三子
+            
+            // 5. 位置評分（更細緻的位置評估）
+            const center = Math.floor(BOARD_SIZE / 2);
+            const distToCenter = Math.abs(row - center) + Math.abs(col - center);
+            score += Math.max(0, 20 - distToCenter * 2);  // 鼓勵佔據中央區域
+            
+            // 星位和天元
+            const starPoints = [
+                [3, 3], [3, 9], [3, 15],
+                [9, 3], [9, 9], [9, 15],
+                [15, 3], [15, 9], [15, 15]
+            ];
+            if (starPoints.some(([r, c]) => r === row && c === col)) {
+                score += 25;  // 提高星位的價值
+            }
+            
+            // 6. 戰術評分
+            // 檢查是否能形成眼型
+            if (canFormEye(row, col, 'white', tempBoard)) {
+                score += 45;
+            }
+            
+            // 檢查是否能破壞對手的眼型
+            if (canFormEye(row, col, 'black', tempBoard)) {
+                score += 40;
+            }
+            
+            // 7. 防守評分（更全面的防守考慮）
+            // 檢查是否能阻止對手的好棋
+            tempBoard[row][col] = 'black';
+            const enemyCaptures = getCaptures(row, col, tempBoard);
+            if (enemyCaptures.length > 0) {
+                score += 45;  // 提高阻止對手提子的優先級
+            }
+            
+            // 檢查對手是否能在此位置形成強勢棋型
+            const enemyPattern = evaluatePatternForColor(row, col, 'black');
+            score += enemyPattern * 0.8;  // 考慮阻止對手的強勢位置
+            
+            // 8. 緊急情況處理（更智能的救援）
+            const surroundedGroups = findSurroundedGroups('white');
+            surroundedGroups.forEach(group => {
+                if (canSaveGroup(group, row, col)) {
+                    const groupSize = group.length;
+                    score += 60 + groupSize * 10;  // 根據棋組大小調整救援優先級
+                }
+            });
+            
+            // 9. 邊緣位置評估（更細緻）
+            if (row === 0 || row === BOARD_SIZE - 1 || col === 0 || col === BOARD_SIZE - 1) {
+                if (friendlyStones >= 2) {
+                    score -= 3;  // 邊緣有己方棋子時扣分較少
+                } else {
+                    score -= 8;  // 孤立的邊緣位置扣分更多
+                }
+            }
+            
+            // 10. 整體局勢評估
+            const boardScore = evaluateBoardPosition();
+            score += boardScore * 0.3;  // 考慮整體局勢
+            
+            return score;
+        }
+
+        // 新增：評估是否能形成眼型
+        function canFormEye(row, col, color, board) {
+            const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+            let friendlyCount = 0;
+            
+            for (const [dx, dy] of directions) {
+                const newRow = row + dx;
+                const newCol = col + dy;
+                
+                if (newRow >= 0 && newRow < BOARD_SIZE && newCol >= 0 && newCol < BOARD_SIZE) {
+                    if (board[newRow][newCol] === color) {
+                        friendlyCount++;
+                    }
+                }
+            }
+            
+            return friendlyCount >= 3;
+        }
+
+        // 新增：評估特定顏色的棋型強度
+        function evaluatePatternForColor(row, col, color) {
+            let score = 0;
+            const directions = [
+                [[0, 1], [0, 2], [0, 3]], // 橫向
+                [[1, 0], [2, 0], [3, 0]], // 縱向
+                [[1, 1], [2, 2], [3, 3]], // 右下斜
+                [[1, -1], [2, -2], [3, -3]] // 左下斜
+            ];
+            
+            for (const direction of directions) {
+                let pattern = '';
+                for (const [dx, dy] of direction) {
+                    const newRow = row + dx;
+                    const newCol = col + dy;
+                    
+                    if (newRow >= 0 && newRow < BOARD_SIZE && newCol >= 0 && newCol < BOARD_SIZE) {
+                        pattern += gameState.board[newRow][newCol] === color ? '1' : 
+                                  gameState.board[newRow][newCol] === null ? '0' : '2';
+                    }
+                }
+                
+                // 評估棋型
+                if (pattern === '111') score += 100; // 連續三子
+                if (pattern === '110') score += 50;  // 活二
+                if (pattern === '011') score += 50;  // 活二
+            }
+            
+            return score;
+        }
+
+        // 新增：評估整體局勢
+        function evaluateBoardPosition() {
+            let score = 0;
+            const territories = calculateTerritories();
+            
+            score += territories.white * 2;    // 己方勢力範圍
+            score -= territories.black * 1.5;  // 對方勢力範圍
+            
+            return score;
+        }
+
+        // 新增：計算雙方勢力範圍
+        function calculateTerritories() {
+            const territories = { white: 0, black: 0 };
+            const visited = new Set();
+            
+            for (let i = 0; i < BOARD_SIZE; i++) {
+                for (let j = 0; j < BOARD_SIZE; j++) {
+                    if (!visited.has(`${i},${j}`) && gameState.board[i][j] === null) {
+                        const territory = floodFillTerritory(i, j, visited);
+                        if (territory.owner) {
+                            territories[territory.owner] += territory.size;
+                        }
+                    }
+                }
+            }
+            
+            return territories;
         }
 
         // 添加模式選擇事件監聽器
@@ -635,6 +952,263 @@
 
         // 初始化遊戲
         drawBoard();
+
+        // 添加缺失的函數
+        // 尋找被包圍的棋組
+        function findSurroundedGroups(color) {
+            const groups = [];
+            const checked = new Set();
+            
+            for (let i = 0; i < BOARD_SIZE; i++) {
+                for (let j = 0; j < BOARD_SIZE; j++) {
+                    if (gameState.board[i][j] === color && !checked.has(`${i},${j}`)) {
+                        const group = getGroup(i, j, gameState.board);
+                        if (group && countLiberties(group) <= 2) {  // 氣數小於等於2的棋組
+                            groups.push(group);
+                        }
+                        group.forEach(([r, c]) => checked.add(`${r},${c}`));
+                    }
+                }
+            }
+            return groups;
+        }
+
+        // 計算棋組的氣數
+        function countLiberties(group) {
+            const liberties = new Set();
+            const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+            
+            group.forEach(([row, col]) => {
+                directions.forEach(([dx, dy]) => {
+                    const newRow = row + dx;
+                    const newCol = col + dy;
+                    
+                    if (newRow >= 0 && newRow < BOARD_SIZE && 
+                        newCol >= 0 && newCol < BOARD_SIZE && 
+                        gameState.board[newRow][newCol] === null) {
+                        liberties.add(`${newRow},${newCol}`);
+                    }
+                });
+            });
+            
+            return liberties.size;
+        }
+
+        // 檢查是否能救援棋組
+        function canSaveGroup(group, row, col) {
+            const tempBoard = gameState.board.map(row => [...row]);
+            tempBoard[row][col] = 'white';
+            return hasLibertiesGroup(group, tempBoard);
+        }
+
+        // 領地計算的輔助函數
+        function floodFillTerritory(row, col, visited) {
+            const territory = { size: 0, owner: null };
+            const queue = [[row, col]];
+            const borders = new Set();
+            
+            while (queue.length > 0) {
+                const [r, c] = queue.shift();
+                const key = `${r},${c}`;
+                
+                if (visited.has(key)) continue;
+                visited.add(key);
+                
+                if (gameState.board[r][c] === null) {
+                    territory.size++;
+                    
+                    // 檢查四周
+                    const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+                    for (const [dx, dy] of directions) {
+                        const newRow = r + dx;
+                        const newCol = c + dy;
+                        
+                        if (newRow >= 0 && newRow < BOARD_SIZE && 
+                            newCol >= 0 && newCol < BOARD_SIZE) {
+                            if (gameState.board[newRow][newCol] === null) {
+                                queue.push([newRow, newCol]);
+                            } else {
+                                borders.add(gameState.board[newRow][newCol]);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // 判斷領地歸屬
+            if (borders.size === 1) {
+                territory.owner = borders.values().next().value;
+            }
+            
+            return territory;
+        }
+
+        // 在 script 標籤內添加背景音樂和動畫相關代碼
+        const bgMusic = {
+            context: null,
+            oscillators: [],
+            gainNodes: [],
+            isPlaying: false,
+            
+            init() {
+                this.context = new (window.AudioContext || window.webkitAudioContext)();
+                this.createMelody();
+            },
+            
+            createMelody() {
+                const notes = {
+                    'C4': 261.63, 'D4': 293.66, 'E4': 329.63, 'F4': 349.23,
+                    'G4': 392.00, 'A4': 440.00, 'B4': 493.88, 'C5': 523.25
+                };
+
+                // 舒緩的旋律序列
+                const melody = [
+                    {note: 'C4', duration: 2}, {note: 'E4', duration: 2},
+                    {note: 'G4', duration: 2}, {note: 'C5', duration: 2},
+                    {note: 'B4', duration: 2}, {note: 'G4', duration: 2},
+                    {note: 'E4', duration: 2}, {note: 'C4', duration: 2},
+                ];
+
+                let time = 0;
+                const baseVolume = 0.05;  // 降低音量
+                
+                melody.forEach(({note, duration}) => {
+                    setTimeout(() => {
+                        if (this.isPlaying) {
+                            const osc = this.context.createOscillator();
+                            const gain = this.context.createGain();
+                            
+                            // 使用正弦波獲得更柔和的音色
+                            osc.type = 'sine';
+                            
+                            osc.frequency.setValueAtTime(notes[note], this.context.currentTime);
+                            
+                            // 音量包絡更柔和
+                            gain.gain.setValueAtTime(0, this.context.currentTime);
+                            gain.gain.linearRampToValueAtTime(baseVolume, this.context.currentTime + 0.1);
+                            gain.gain.linearRampToValueAtTime(baseVolume * 0.7, this.context.currentTime + duration * 0.8);
+                            gain.gain.linearRampToValueAtTime(0, this.context.currentTime + duration);
+                            
+                            osc.connect(gain);
+                            gain.connect(this.context.destination);
+                            
+                            osc.start();
+                            osc.stop(this.context.currentTime + duration);
+                            
+                            this.oscillators.push(osc);
+                            this.gainNodes.push(gain);
+                        }
+                    }, time * 1000);
+                    
+                    time += duration;
+                });
+                
+                // 循環播放
+                setTimeout(() => {
+                    this.oscillators = [];
+                    this.gainNodes = [];
+                    if (this.isPlaying) {
+                        this.createMelody();
+                    }
+                }, time * 1000);
+            },
+            
+            start() {
+                if (!this.isPlaying) {
+                    this.isPlaying = true;
+                    this.createMelody();
+                }
+            },
+            
+            stop() {
+                this.isPlaying = false;
+                this.oscillators.forEach(osc => {
+                    try {
+                        osc.stop();
+                    } catch (e) {}
+                });
+                this.oscillators = [];
+                this.gainNodes = [];
+            }
+        };
+
+        // 修改創建雲朵函數
+        function createCloud() {
+            const cloud = document.createElement('div');
+            cloud.className = 'pixel-cloud';
+            cloud.style.top = Math.random() * 40 + '%';
+            cloud.style.left = '-150px';
+            cloud.style.transform = 'scale(' + (Math.random() * 0.5 + 0.5) + ')';
+            
+            cloud.innerHTML = `
+                <svg class="cloud-svg" viewBox="0 0 100 50">
+                    <rect x="20" y="25" width="60" height="25" rx="12.5"/>
+                    <circle cx="30" cy="25" r="12.5"/>
+                    <circle cx="50" cy="25" r="12.5"/>
+                    <circle cx="70" cy="25" r="12.5"/>
+                </svg>
+            `;
+            
+            document.getElementById('clouds-container').appendChild(cloud);
+            
+            const duration = Math.random() * (60 - 30) + 30;
+            const animation = cloud.animate([
+                { transform: 'translateX(0)' },
+                { transform: 'translateX(calc(100vw + 150px))' }
+            ], {
+                duration: duration * 1000,
+                easing: 'linear'
+            });
+            
+            animation.onfinish = () => cloud.remove();
+        }
+
+        // 修改創建鳥函數
+        function createBird() {
+            const bird = document.createElement('div');
+            bird.className = 'bird';
+            
+            const path = Math.floor(Math.random() * 4) + 1;
+            bird.style.animation = `flyDiagonal${path} ${Math.random() * (12 - 8) + 8}s linear`;
+            
+            bird.innerHTML = `
+                <svg class="bird-svg" viewBox="0 0 50 30">
+                    <path class="wing" d="M 15,15 Q 25,5 35,15"/>
+                    <path class="wing" d="M 15,15 Q 25,25 35,15"/>
+                    <path d="M 40,15 L 45,12 Q 47,15 45,18 L 40,15 M 10,15 Q 25,10 40,15 Q 25,20 10,15 Z"/>
+                </svg>
+            `;
+            
+            document.getElementById('birds-container').appendChild(bird);
+            
+            setTimeout(() => bird.remove(), 12000);
+        }
+
+        // 初始化背景動畫
+        setInterval(createCloud, 10000);
+        setInterval(() => {
+            if (Math.random() < 0.3) createBird();
+        }, 5000);
+
+        // 初始化音樂控制
+        document.getElementById('musicBtn').addEventListener('click', () => {
+            if (!bgMusic.context) {
+                bgMusic.init();
+            }
+            
+            if (bgMusic.isPlaying) {
+                bgMusic.stop();
+                document.getElementById('musicBtn').style.opacity = '0.5';
+            } else {
+                bgMusic.start();
+                document.getElementById('musicBtn').style.opacity = '1';
+            }
+        });
+
+        // 自動開始播放音樂
+        bgMusic.init();
+        bgMusic.start();
+        document.getElementById('musicBtn').style.opacity = '1';
     </script>
 </body>
 </html>
