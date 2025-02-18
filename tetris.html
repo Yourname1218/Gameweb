@@ -1,0 +1,1302 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>俄羅斯方塊</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            font-family: 'SuperMario', 'Press Start 2P', cursive;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        @font-face {
+            font-family: 'Press Start 2P';
+            src: url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        }
+
+        @font-face {
+            font-family: 'SuperMario';
+            src: url('https://fonts.cdnfonts.com/css/new-super-mario-font-u');
+        }
+
+        .game-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 600px;
+            height: 600px;
+        }
+
+        #gameCanvas {
+            width: 800px;
+            height: 600px;
+            background: #000033;
+            border: none;
+            position: relative;
+            box-shadow: 
+                -4px -4px 0 0 #e75a10,
+                4px -4px 0 0 #e75a10,
+                -4px 4px 0 0 #e75a10,
+                4px 4px 0 0 #e75a10,
+                inset -4px -4px 0 0 #feb142,
+                inset 4px -4px 0 0 #feb142,
+                inset -4px 4px 0 0 #873000,
+                inset 4px 4px 0 0 #873000,
+                0 0 0 4px #e75a10;
+        }
+
+        .countdown {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 100px;
+            color: #fff;
+            text-shadow: 4px 4px #ff0000;
+            opacity: 0;
+            pointer-events: none;
+            animation: countdownAnim 1s ease-in-out;
+            font-family: 'SuperMario', 'Press Start 2P', cursive;
+        }
+
+        @keyframes countdownAnim {
+            0% {
+                transform: translate(-50%, -50%) scale(2);
+                opacity: 0;
+            }
+            20% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 1;
+            }
+            80% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(0);
+                opacity: 0;
+            }
+        }
+
+        /* 添加背景動畫 */
+        .background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 200%;
+            height: 100%;
+            background-image: 
+                linear-gradient(0deg, #87CEEB 0%, #87CEEB 40%, #0099ff 40%, #0099ff 60%, #87CEEB 60%, #87CEEB 100%),
+                repeating-linear-gradient(0deg, transparent 0%, transparent 40%, #00ff00 40%, #00ff00 45%, transparent 45%, transparent 100%);
+            background-size: 100% 100%, 100px 100%;
+            animation: scrollBackground 20s linear infinite;
+            z-index: -2;
+        }
+
+        .pixel-cloud {
+            position: fixed;
+            z-index: -1;
+            opacity: 0.9;
+            animation: floatCloud linear;  /* 動畫時間會在 JavaScript 中設定 */
+        }
+
+        .cloud-small {
+            width: 80px;
+            height: 40px;
+        }
+
+        .cloud-medium {
+            width: 120px;
+            height: 60px;
+        }
+
+        .cloud-large {
+            width: 160px;
+            height: 80px;
+        }
+
+        .cloud-svg {
+            width: 100%;
+            height: 100%;
+            fill: white;
+            filter: url(#pixelate);
+        }
+
+        .pixel-mountain {
+            position: absolute;
+            bottom: -150px;
+            width: 100%;
+            height: 150px;
+            background: repeating-linear-gradient(
+                45deg,
+                #4a9c2e 0%,
+                #4a9c2e 10%,
+                #3d8325 10%,
+                #3d8325 20%
+            );
+            clip-path: polygon(0% 100%, 20% 40%, 40% 80%, 60% 20%, 80% 60%, 100% 10%, 100% 100%);
+            z-index: -1;
+            animation: mountainRise 1s ease-out 0.5s forwards;
+        }
+
+        .bird {
+            position: absolute;
+            width: 50px;
+            height: 30px;
+            z-index: -1;
+            opacity: 0;
+            transform-origin: center;
+        }
+
+        .bird-svg {
+            width: 100%;
+            height: 100%;
+            fill: #333;
+        }
+
+        .bird .wing {
+            transform-origin: 20px 15px;
+            animation: flapWing 0.4s infinite alternate ease-in-out;
+        }
+
+        .pixel-star {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #fff;
+            clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+            animation: twinkle 1s infinite alternate;
+        }
+
+        @keyframes scrollBackground {
+            from { transform: translateX(0); }
+            to { transform: translateX(-50%); }
+        }
+
+        @keyframes mountainRise {
+            0% { bottom: -150px; transform: scale(0.95); }
+            60% { bottom: -20px; transform: scale(1.02); }
+            80% { bottom: -10px; transform: scale(0.98); }
+            100% { bottom: 0; transform: scale(1); }
+        }
+
+        @keyframes flapWing {
+            0% { transform: rotate(-30deg) scale(1.1); }
+            100% { transform: rotate(30deg) scale(0.9); }
+        }
+
+        @keyframes twinkle {
+            from { opacity: 0.3; }
+            to { opacity: 1; }
+        }
+
+        /* 遊戲區域樣式 */
+        .game-area {
+            display: grid;
+            grid-template-columns: auto 150px;
+            gap: 10px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            box-shadow: 
+                -4px -4px 0 0 #e75a10,
+                4px -4px 0 0 #e75a10,
+                -4px 4px 0 0 #e75a10,
+                4px 4px 0 0 #e75a10,
+                inset -4px -4px 0 0 #feb142,
+                inset 4px -4px 0 0 #feb142,
+                inset -4px 4px 0 0 #873000,
+                inset 4px 4px 0 0 #873000,
+                0 0 0 4px #e75a10;
+        }
+
+        .main-board {
+            width: 300px;
+            height: 600px;
+            border: 4px solid #fff;
+            background: rgba(0, 0, 51, 0.8);
+        }
+
+        .side-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .preview-box {
+            width: 120px;
+            height: 120px;
+            border: 4px solid #fff;
+            background: rgba(0, 0, 51, 0.8);
+        }
+
+        .score-box {
+            padding: 10px;
+            border: 4px solid #fff;
+            background: rgba(0, 0, 51, 0.8);
+            color: #fff;
+            font-size: 20px;
+            text-align: center;
+            width: 120px;
+            font-family: 'SuperMario', 'Press Start 2P', cursive;
+        }
+
+        .controls {
+            color: #fff;
+            font-size: 14px;
+            text-align: left;
+            padding: 10px;
+            border: 4px solid #fff;
+            background: rgba(0, 0, 51, 0.8);
+            width: 120px;
+            font-family: 'SuperMario', 'Press Start 2P', cursive;
+        }
+
+        /* 修改雲朵的樣式 */
+        @keyframes floatCloud {
+            from { transform: translateX(-100px); }
+            to { transform: translateX(calc(100vw + 100px)); }
+        }
+
+        /* 添加回首頁按鈕樣式 */
+        .home-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #fff;
+            border-radius: 5px;
+            color: #fff;
+            font-family: 'SuperMario', 'Press Start 2P', cursive;
+            font-size: 16px;
+            cursor: pointer;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .home-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        /* 修改遊戲結束文字字體 */
+        .game-over {
+            font-family: 'SuperMario', 'Press Start 2P', cursive;
+        }
+    </style>
+</head>
+<body>
+    <button class="home-button" onclick="window.location.href='Gameweb.html'">回首頁</button>
+    <div class="background"></div>
+    <div class="pixel-mountain"></div>
+    <div class="pixel-cloud cloud-large" style="top: 15%; animation-duration: 30s;"></div>
+    <div class="pixel-cloud cloud-medium" style="top: 25%; animation-duration: 25s;"></div>
+    <div class="pixel-cloud cloud-small" style="top: 35%; animation-duration: 20s;"></div>
+    <div class="pixel-cloud cloud-large" style="top: 45%; animation-duration: 28s;"></div>
+    <div class="pixel-cloud cloud-medium" style="top: 55%; animation-duration: 22s;"></div>
+    <div class="pixel-star" style="top: 10%; left: 20%"></div>
+    <div class="pixel-star" style="top: 15%; left: 80%"></div>
+    <div class="pixel-star" style="top: 25%; left: 40%"></div>
+    <div class="pixel-star" style="top: 30%; left: 60%"></div>
+
+    <div class="game-container">
+        <div class="game-area">
+            <canvas id="mainBoard" class="main-board" width="300" height="600"></canvas>
+            <div class="side-panel">
+                <canvas id="previewBox" class="preview-box" width="120" height="120"></canvas>
+                <div class="score-box">
+                    <div>分數: <span id="score">0</span></div>
+                    <div>等級: <span id="level">1</span></div>
+                    <div>消除行數: <span id="lines">0</span></div>
+                </div>
+                <div class="controls">
+                    <p>← → : 左右移動</p>
+                    <p>↑ : 旋轉</p>
+                    <p>↓ : 加速下落</p>
+                    <p>空白鍵 : 直接下落</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <svg style="display: none;">
+        <symbol id="cloud-svg" viewBox="0 0 100 60">
+            <path d="M 10,40 
+                     C 10,30 20,20 30,20
+                     C 30,10 40,0 55,0
+                     C 70,0 80,10 80,20
+                     C 90,20 100,30 100,40
+                     C 100,50 90,60 80,60
+                     L 20,60
+                     C 10,60 0,50 10,40" 
+                  fill="white"/>
+        </symbol>
+        
+        <symbol id="bird-svg" viewBox="0 0 50 30">
+            <path class="wing" d="M 15,15 Q 25,5 35,15" />
+            <path d="M 40,15 
+                     L 45,12
+                     Q 47,15 45,18
+                     L 40,15
+                     M 10,15
+                     Q 25,10 40,15
+                     Q 25,20 10,15 Z" />
+        </symbol>
+    </svg>
+
+    <svg class="pixelate-filter">
+        <defs>
+            <filter id="pixelate">
+                <feFlood x="4" y="4" height="2" width="2"/>
+                <feComposite width="8" height="8"/>
+                <feTile result="a"/>
+                <feComposite in="SourceGraphic" in2="a" operator="in"/>
+                <feMorphology operator="dilate" radius="1"/>
+            </filter>
+        </defs>
+    </svg>
+
+    <script>
+        // 遊戲常量
+        const BLOCK_SIZE = 30;
+        const BOARD_WIDTH = 10;
+        const BOARD_HEIGHT = 20;
+        const COLORS = [
+            null,
+            '#FF0D72',  // I - 亮紅
+            '#0DC2FF',  // J - 亮藍
+            '#0DFF72',  // L - 亮綠
+            '#F538FF',  // O - 亮紫
+            '#FF8E0D',  // S - 亮橙
+            '#FFE138',  // T - 亮黃
+            '#3877FF',  // Z - 深藍
+            // 高亮版本（閃爍效果）
+            null,
+            '#FF99B2',  // I - 更亮的紅
+            '#99EEFF',  // J - 更亮的藍
+            '#99FFB2',  // L - 更亮的綠
+            '#FF99FF',  // O - 更亮的紫
+            '#FFCC99',  // S - 更亮的橙
+            '#FFFF99',  // T - 更亮的黃
+            '#99B2FF'   // Z - 更亮的藍
+        ];
+
+        // 方塊形狀定義
+        const PIECES = [
+            [],
+            [[0, 0, 0, 0], [1, 1, 1, 1], [0, 0, 0, 0], [0, 0, 0, 0]], // I
+            [[2, 0, 0], [2, 2, 2], [0, 0, 0]], // J
+            [[0, 0, 3], [3, 3, 3], [0, 0, 0]], // L
+            [[4, 4], [4, 4]], // O
+            [[0, 5, 5], [5, 5, 0], [0, 0, 0]], // S
+            [[0, 6, 0], [6, 6, 6], [0, 0, 0]], // T
+            [[7, 7, 0], [0, 7, 7], [0, 0, 0]]  // Z
+        ];
+
+        // 添加音效生成器
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+        const sounds = {
+            move: {
+                play: () => playSound(150, 0.1, 'square', 0.3),  // 移動音效
+            },
+            rotate: {
+                play: () => playSound(200, 0.1, 'square', 0.3),  // 旋轉音效
+            },
+            drop: {
+                play: () => playSound(100, 0.15, 'square', 0.3),  // 落地音效
+            },
+            clear: {
+                play: () => {
+                    // 消行音效（上升音階）
+                    playSound(300, 0.1, 'square', 0.3);
+                    setTimeout(() => playSound(400, 0.1, 'square', 0.3), 50);
+                    setTimeout(() => playSound(500, 0.1, 'square', 0.3), 100);
+                }
+            },
+            gameOver: {
+                play: () => {
+                    // 遊戲結束音效（下降音階）
+                    playSound(400, 0.1, 'square', 0.3);
+                    setTimeout(() => playSound(300, 0.1, 'square', 0.3), 100);
+                    setTimeout(() => playSound(200, 0.2, 'square', 0.3), 200);
+                    setTimeout(() => playSound(100, 0.3, 'square', 0.3), 300);
+                }
+            },
+            levelUp: {
+                play: () => {
+                    // 升級音效（快速上升音階）
+                    playSound(300, 0.05, 'square', 0.3);
+                    setTimeout(() => playSound(400, 0.05, 'square', 0.3), 50);
+                    setTimeout(() => playSound(500, 0.05, 'square', 0.3), 100);
+                    setTimeout(() => playSound(600, 0.1, 'square', 0.3), 150);
+                }
+            }
+        };
+
+        // 音效生成函數
+        function playSound(frequency, duration, type = 'square', volume = 0.3) {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.type = type;
+            oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+            
+            gainNode.gain.setValueAtTime(volume, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.start();
+            oscillator.stop(audioContext.currentTime + duration);
+        }
+
+        // 遊戲狀態
+        let gameState = {
+            score: 0,
+            level: 1,
+            lines: 0,
+            board: Array(BOARD_HEIGHT).fill().map(() => Array(BOARD_WIDTH).fill(0)),
+            piece: null,
+            nextPiece: null,
+            position: {x: 0, y: 0},
+            isGameOver: false
+        };
+
+        // 在 script 開頭添加按鍵狀態追蹤
+        const keyState = {
+            left: false,    // 左箭頭
+            right: false,   // 右箭頭
+            down: false,    // 下箭頭
+            up: false       // 上箭頭
+        };
+
+        // 修改按鍵延遲設定
+        const KEY_REPEAT_DELAY = 150;    // 第一次按下到重複的延遲（毫秒）
+        const KEY_REPEAT_INTERVAL = 50;  // 重複移動的間隔（毫秒）
+        let keyRepeatTimers = {
+            left: null,
+            right: null,
+            down: null
+        };
+
+        // 修改倒數計時函數，在遊戲開始時自動播放音樂
+        function startCountdown(callback) {
+            let count = 3;
+            
+            function showNumber() {
+                const countElement = document.createElement('div');
+                countElement.className = 'countdown';
+                countElement.textContent = count;
+                document.body.appendChild(countElement);
+
+                countElement.addEventListener('animationend', () => {
+                    countElement.remove();
+                    count--;
+                    
+                    if (count > 0) {
+                        setTimeout(showNumber, 200);
+                    } else {
+                        setTimeout(() => {
+                            // 初始化並開始播放背景音樂
+                            if (!bgMusic.context) {
+                                bgMusic.init();
+                            }
+                            bgMusic.start();
+                            
+                            // 開始遊戲
+                            callback();
+                        }, 200);
+                    }
+                });
+            }
+
+            showNumber();
+        }
+
+        // 添加遊戲循環函數
+        let dropCounter = 0;
+        let lastTime = 0;
+
+        function gameLoop(time = 0) {
+            if (gameState.isGameOver) return;
+
+            const deltaTime = time - lastTime;
+            lastTime = time;
+            dropCounter += deltaTime;
+
+            // 根據等級調整下落速度
+            const dropInterval = Math.max(1000 - (gameState.level - 1) * 100, 100); // 最快100ms一次
+            
+            if (dropCounter > dropInterval) {
+                dropPiece();
+                dropCounter = 0;
+            }
+
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 修改初始化函數
+        function initGame() {
+            // 初始化遊戲狀態
+            gameState = {
+                score: 0,
+                level: 1,
+                lines: 0,
+                board: Array(BOARD_HEIGHT).fill().map(() => Array(BOARD_WIDTH).fill(0)),
+                piece: createPiece(),
+                nextPiece: createPiece(),
+                position: {x: 0, y: 0},
+                isGameOver: false
+            };
+
+            // 設置初始位置
+            gameState.position = {
+                x: Math.floor(BOARD_WIDTH / 2) - Math.floor(gameState.piece[0].length / 2),
+                y: 0
+            };
+
+            // 更新分數顯示
+            updateScore(0);
+            updateLevel(1);
+
+            // 添加事件監聽器
+            document.addEventListener('keydown', handleInput);
+            document.addEventListener('keyup', handleInput);
+
+            // 啟動遊戲循環
+            lastTime = 0;
+            dropCounter = 0;
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 修改清除行的函數
+        function clearLines() {
+            let linesCleared = [];
+            
+            // 先找出要消除的行
+            for (let y = BOARD_HEIGHT - 1; y >= 0; y--) {
+                let isComplete = true;
+                for (let x = 0; x < BOARD_WIDTH; x++) {
+                    if (gameState.board[y][x] === 0) {
+                        isComplete = false;
+                        break;
+                    }
+                }
+                if (isComplete) {
+                    linesCleared.push(y);
+                }
+            }
+
+            if (linesCleared.length > 0) {
+                sounds.clear.play();
+                
+                // 一次性移除所有完整行
+                linesCleared.sort((a, b) => b - a);
+                linesCleared.forEach(y => {
+                    gameState.board.splice(y, 1);
+                });
+                
+                // 在頂部添加新的空行
+                for (let i = 0; i < linesCleared.length; i++) {
+                    gameState.board.unshift(Array(BOARD_WIDTH).fill(0));
+                }
+
+                // 更新分數
+                gameState.lines += linesCleared.length;
+                gameState.score += calculateScore(linesCleared.length);
+                updateScore(gameState.score);
+                
+                // 更新等級
+                const newLevel = Math.floor(gameState.lines / 10) + 1;
+                if (newLevel !== gameState.level) {
+                    gameState.level = newLevel;
+                    updateLevel(newLevel);
+                }
+
+                // 重繪遊戲板
+                draw();
+            }
+        }
+
+        // 計算分數
+        function calculateScore(lines) {
+            const basePoints = [0, 40, 100, 300, 1200]; // 0, 1, 2, 3, 4 行的分數
+            return basePoints[lines] * gameState.level;
+        }
+
+        // 更新顯示分數
+        function updateScore(score) {
+            document.getElementById('score').textContent = score;
+            document.getElementById('lines').textContent = gameState.lines;
+        }
+
+        // 修改鍵盤處理函數
+        function handleInput(event) {
+            if (gameState.isGameOver) return;
+
+            // 按下按鍵
+            if (event.type === 'keydown') {
+                if (!keyState[getKeyName(event.keyCode)]) {
+                    keyState[getKeyName(event.keyCode)] = true;
+                    
+                    // 執行初始移動
+                    switch (event.keyCode) {
+                        case 37: // 左箭頭
+                            movePiece(-1);
+                            // 設置重複計時器，先等待一段時間再開始重複
+                            keyRepeatTimers.left = setTimeout(() => {
+                                keyRepeatTimers.left = setInterval(() => movePiece(-1), KEY_REPEAT_INTERVAL);
+                            }, KEY_REPEAT_DELAY);
+                            break;
+                        case 39: // 右箭頭
+                            movePiece(1);
+                            keyRepeatTimers.right = setTimeout(() => {
+                                keyRepeatTimers.right = setInterval(() => movePiece(1), KEY_REPEAT_INTERVAL);
+                            }, KEY_REPEAT_DELAY);
+                            break;
+                        case 40: // 下箭頭
+                            dropPiece();
+                            keyRepeatTimers.down = setTimeout(() => {
+                                keyRepeatTimers.down = setInterval(dropPiece, KEY_REPEAT_INTERVAL);
+                            }, KEY_REPEAT_DELAY);
+                            break;
+                        case 38: // 上箭頭
+                            rotatePiece();
+                            // 檢查是否同時按著左右鍵
+                            if (keyState.left) movePiece(-1);
+                            if (keyState.right) movePiece(1);
+                            break;
+                        case 32: // 空格鍵
+                            hardDrop();
+                            break;
+                    }
+                }
+            }
+            // 釋放按鍵
+            else if (event.type === 'keyup') {
+                const keyName = getKeyName(event.keyCode);
+                keyState[keyName] = false;
+                
+                // 清除對應的計時器
+                if (keyRepeatTimers[keyName]) {
+                    clearTimeout(keyRepeatTimers[keyName]);
+                    clearInterval(keyRepeatTimers[keyName]);
+                    keyRepeatTimers[keyName] = null;
+                }
+            }
+        }
+
+        // 輔助函數：獲取按鍵名稱
+        function getKeyName(keyCode) {
+            switch (keyCode) {
+                case 37: return 'left';
+                case 39: return 'right';
+                case 40: return 'down';
+                case 38: return 'up';
+                default: return null;
+            }
+        }
+
+        // 快速下落
+        function hardDrop() {
+            while (!collide()) {
+                gameState.position.y++;
+            }
+            gameState.position.y--;
+            mergePiece();
+            resetPiece();
+            clearLines();
+            sounds.drop.play();
+        }
+
+        // 遊戲結束處理
+        function gameOver() {
+            gameState.isGameOver = true;
+            sounds.gameOver.play();
+            
+            // 移除鍵盤控制
+            document.removeEventListener('keydown', handleInput);
+            document.removeEventListener('keyup', handleInput);
+
+            const gameOverDiv = document.createElement('div');
+            gameOverDiv.className = 'game-over';
+            gameOverDiv.style.position = 'absolute';
+            gameOverDiv.style.top = '50%';
+            gameOverDiv.style.left = '50%';
+            gameOverDiv.style.transform = 'translate(-50%, -50%)';
+            gameOverDiv.style.color = '#fff';
+            gameOverDiv.style.fontSize = '40px';
+            gameOverDiv.style.textAlign = 'center';
+            gameOverDiv.innerHTML = `
+                遊戲結束<br>
+                分數: ${gameState.score}<br>
+                <span style="font-size: 20px">按空格鍵重新開始</span>
+            `;
+            document.body.appendChild(gameOverDiv);
+
+            // 監聽重新開始
+            const restartListener = (e) => {
+                if (e.keyCode === 32) {
+                    document.removeEventListener('keydown', restartListener);
+                    gameOverDiv.remove();
+                    resetGame();
+                }
+            };
+            document.addEventListener('keydown', restartListener);
+        }
+
+        // 重置遊戲
+        function resetGame() {
+            gameState = {
+                score: 0,
+                level: 1,
+                lines: 0,
+                board: Array(BOARD_HEIGHT).fill().map(() => Array(BOARD_WIDTH).fill(0)),
+                piece: null,
+                nextPiece: null,
+                position: {x: 0, y: 0},
+                isGameOver: false
+            };
+
+            // 重置按鍵狀態
+            Object.keys(keyState).forEach(key => {
+                keyState[key] = false;
+            });
+            
+            // 清除所有計時器
+            Object.keys(keyRepeatTimers).forEach(key => {
+                if (keyRepeatTimers[key]) {
+                    clearInterval(keyRepeatTimers[key]);
+                    keyRepeatTimers[key] = null;
+                }
+            });
+
+            updateScore(0);
+            updateLevel(1);
+            startCountdown(initGame);
+        }
+
+        // 創建新方塊
+        function createPiece() {
+            const pieceType = Math.floor(Math.random() * 7) + 1;
+            return PIECES[pieceType];
+        }
+
+        // 繪製方塊
+        function drawBlock(ctx, x, y, color) {
+            const blockX = x * BLOCK_SIZE;
+            const blockY = y * BLOCK_SIZE;
+            const size = BLOCK_SIZE - 1;
+
+            // 主體顏色
+            ctx.fillStyle = color;
+            ctx.fillRect(blockX, blockY, size, size);
+
+            // 亮面（左上）
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.beginPath();
+            ctx.moveTo(blockX, blockY);
+            ctx.lineTo(blockX + size, blockY);
+            ctx.lineTo(blockX + size - 4, blockY + 4);
+            ctx.lineTo(blockX + 4, blockY + 4);
+            ctx.lineTo(blockX + 4, blockY + size - 4);
+            ctx.lineTo(blockX, blockY + size);
+            ctx.closePath();
+            ctx.fill();
+
+            // 暗面（右下）
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.beginPath();
+            ctx.moveTo(blockX + size, blockY);
+            ctx.lineTo(blockX + size, blockY + size);
+            ctx.lineTo(blockX, blockY + size);
+            ctx.lineTo(blockX + 4, blockY + size - 4);
+            ctx.lineTo(blockX + size - 4, blockY + size - 4);
+            ctx.lineTo(blockX + size - 4, blockY + 4);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // 繪製遊戲畫面
+        function draw() {
+            const mainCtx = document.getElementById('mainBoard').getContext('2d');
+            const previewCtx = document.getElementById('previewBox').getContext('2d');
+
+            // 清除畫面
+            mainCtx.fillStyle = 'rgba(0, 0, 51, 0.8)';
+            mainCtx.fillRect(0, 0, mainBoard.width, mainBoard.height);
+            previewCtx.fillStyle = 'rgba(0, 0, 51, 0.8)';
+            previewCtx.fillRect(0, 0, previewBox.width, previewBox.height);
+
+            // 繪製遊戲板
+            drawBoard(mainCtx);
+            // 繪製當前方塊
+            drawPiece(mainCtx);
+            // 繪製預覽方塊
+            drawNextPiece(previewCtx);
+        }
+
+        // 繪製遊戲板
+        function drawBoard(ctx) {
+            // 繪製網格線
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 1;
+
+            // 繪製水平線
+            for (let y = 0; y < BOARD_HEIGHT; y++) {
+                ctx.beginPath();
+                ctx.setLineDash([2, 2]); // 設置虛線樣式
+                ctx.moveTo(0, y * BLOCK_SIZE);
+                ctx.lineTo(BOARD_WIDTH * BLOCK_SIZE, y * BLOCK_SIZE);
+                ctx.stroke();
+            }
+
+            // 繪製垂直線
+            for (let x = 0; x < BOARD_WIDTH; x++) {
+                ctx.beginPath();
+                ctx.setLineDash([2, 2]);
+                ctx.moveTo(x * BLOCK_SIZE, 0);
+                ctx.lineTo(x * BLOCK_SIZE, BOARD_HEIGHT * BLOCK_SIZE);
+                ctx.stroke();
+            }
+
+            // 繪製方塊
+            gameState.board.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value !== 0) {
+                        drawBlock(ctx, x, y, COLORS[value]);
+                    }
+                });
+            });
+        }
+
+        // 繪製當前方塊
+        function drawPiece(ctx) {
+            // 繪製落點預覽
+            const dropPos = getDropPosition();
+            gameState.piece.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value !== 0) {
+                        // 繪製半透明的預覽方塊
+                        ctx.fillStyle = `${COLORS[value]}40`; // 添加40作為透明度
+                        ctx.fillRect(
+                            (x + dropPos.x) * BLOCK_SIZE,
+                            (y + dropPos.y) * BLOCK_SIZE,
+                            BLOCK_SIZE - 1,
+                            BLOCK_SIZE - 1
+                        );
+                    }
+                });
+            });
+
+            // 繪製當前方塊
+            gameState.piece.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value !== 0) {
+                        drawBlock(
+                            ctx,
+                            x + gameState.position.x,
+                            y + gameState.position.y,
+                            COLORS[value]
+                        );
+                    }
+                });
+            });
+        }
+
+        // 繪製預覽方塊
+        function drawNextPiece(ctx) {
+            const piece = gameState.nextPiece;
+            const boxSize = 160; // 預覽框的大小
+            
+            // 計算方塊的實際大小
+            const pieceHeight = piece.length;
+            const pieceWidth = piece[0].length;
+            
+            // 計算居中的偏移量
+            const offsetX = Math.floor((boxSize / BLOCK_SIZE - pieceWidth) / 2);
+            const offsetY = Math.floor((boxSize / BLOCK_SIZE - pieceHeight) / 2);
+
+            // 清除預覽區域
+            ctx.fillStyle = 'rgba(0, 0, 51, 0.8)';
+            ctx.fillRect(0, 0, boxSize, boxSize);
+
+            // 繪製預覽方塊，使用相同的立體效果函數
+            piece.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value !== 0) {
+                        drawBlock(ctx, x + offsetX, y + offsetY, COLORS[value]);
+                    }
+                });
+            });
+        }
+
+        // 碰撞檢測
+        function collide() {
+            return checkCollision(gameState.piece, gameState.position.x, gameState.position.y);
+        }
+
+        // 計算方塊落點位置
+        function getDropPosition() {
+            const currentPiece = gameState.piece;
+            const currentPos = {...gameState.position};
+            let dropY = currentPos.y;
+
+            while (!checkCollision(currentPiece, currentPos.x, dropY + 1)) {
+                dropY++;
+            }
+
+            return {x: currentPos.x, y: dropY};
+        }
+
+        // 檢查碰撞
+        function checkCollision(piece, x, y) {
+            for (let r = 0; r < piece.length; r++) {
+                for (let c = 0; c < piece[r].length; c++) {
+                    if (!piece[r][c]) continue;
+                    
+                    let newY = y + r;
+                    let newX = x + c;
+
+                    if (newY >= BOARD_HEIGHT || newX < 0 || newX >= BOARD_WIDTH || 
+                        (newY >= 0 && gameState.board[newY][newX])) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        // 方塊移動
+        function movePiece(dir) {
+            gameState.position.x += dir;
+            if (collide()) {
+                gameState.position.x -= dir;
+                return false;
+            }
+            sounds.move.play();
+            return true;
+        }
+
+        // 修改方塊旋轉函數
+        function rotatePiece() {
+            const originalPiece = gameState.piece;
+            const originalX = gameState.position.x;
+            
+            // 旋轉方塊
+            const rotated = originalPiece[0].map((_, i) => 
+                originalPiece.map(row => row[i]).reverse()
+            );
+            
+            gameState.piece = rotated;
+            
+            // 檢查並嘗試不同的位置
+            const positions = [0, -1, 1, -2, 2]; // 嘗試的位置順序
+
+            for (let testOffset of positions) {
+                gameState.position.x = originalX + testOffset;
+                if (!collide()) {
+                    sounds.rotate.play();
+                    return true; // 找到有效位置
+                }
+            }
+            
+            // 如果所有位置都不行，恢復原狀
+            gameState.piece = originalPiece;
+            gameState.position.x = originalX;
+            return false;
+        }
+
+        // 方塊下落
+        function dropPiece() {
+            gameState.position.y++;
+            if (collide()) {
+                gameState.position.y--;
+                mergePiece();
+                resetPiece();
+                clearLines();
+            }
+        }
+
+        // 合併方塊到遊戲板
+        function mergePiece() {
+            gameState.piece.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value !== 0) {
+                        gameState.board[y + gameState.position.y][x + gameState.position.x] = value;
+                    }
+                });
+            });
+        }
+
+        // 重置方塊
+        function resetPiece() {
+            gameState.piece = gameState.nextPiece;
+            gameState.nextPiece = createPiece();
+            gameState.position.y = 0;
+            gameState.position.x = Math.floor(BOARD_WIDTH / 2) - Math.floor(gameState.piece[0].length / 2);
+            
+            if (collide()) {
+                gameOver();
+            }
+        }
+
+        // 更新等級
+        function updateLevel(level) {
+            document.getElementById('level').textContent = level;
+            if (level > gameState.level) {
+                sounds.levelUp.play();
+            }
+        }
+
+        // 修改頁面加載事件
+        document.addEventListener('DOMContentLoaded', () => {
+            // 添加點擊事件來初始化音頻上下文（因為瀏覽器政策要求）
+            document.addEventListener('click', () => {
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+            }, { once: true });
+            
+            startCountdown(initGame);
+        });
+
+        // 創建雲朵
+        function createCloud() {
+            const cloud = document.createElement('div');
+            cloud.className = 'pixel-cloud';
+            
+            const size = Math.random() * (160 - 80) + 80;
+            cloud.style.width = size + 'px';
+            cloud.style.height = (size * 0.6) + 'px';
+            
+            cloud.style.top = Math.random() * 60 + '%';
+            cloud.style.left = '0';
+            const duration = Math.random() * (30 - 20) + 20;
+            
+            cloud.style.animationDuration = `${duration}s`;
+            
+            cloud.innerHTML = `<svg class="cloud-svg"><use href="#cloud-svg"/></svg>`;
+            
+            document.body.appendChild(cloud);
+            
+            cloud.addEventListener('animationend', () => {
+                cloud.remove();
+            });
+        }
+
+        // 創建鳥
+        function createBird() {
+            const bird = document.createElement('div');
+            bird.className = 'bird';
+            
+            const size = Math.random() * (50 - 30) + 30;
+            bird.style.width = size + 'px';
+            bird.style.height = (size * 0.6) + 'px';
+            
+            const startPositions = [
+                { x: -100, y: Math.random() * 60 + 20 },
+                { x: window.innerWidth + 100, y: Math.random() * 60 + 20 },
+                { x: Math.random() * window.innerWidth, y: -100 },
+                { x: Math.random() * window.innerWidth, y: window.innerHeight + 100 }
+            ];
+            
+            const startPos = startPositions[Math.floor(Math.random() * startPositions.length)];
+            const endPos = {
+                x: Math.random() * window.innerWidth,
+                y: Math.random() * (window.innerHeight - 200) + 100
+            };
+            
+            const angle = Math.atan2(endPos.y - startPos.y, endPos.x - startPos.x) * 180 / Math.PI;
+            
+            bird.style.left = startPos.x + 'px';
+            bird.style.top = startPos.y + 'px';
+            
+            const duration = Math.random() * (12 - 8) + 8;
+            
+            bird.animate([
+                {
+                    left: startPos.x + 'px',
+                    top: startPos.y + 'px',
+                    transform: `rotate(${angle}deg)`,
+                    opacity: 1
+                },
+                {
+                    left: endPos.x + 'px',
+                    top: endPos.y + 'px',
+                    transform: `rotate(${angle}deg)`,
+                    opacity: 1
+                }
+            ], {
+                duration: duration * 1000,
+                easing: 'linear'
+            });
+            
+            bird.innerHTML = `<svg class="bird-svg"><use href="#bird-svg"/></svg>`;
+            
+            document.body.appendChild(bird);
+            
+            setTimeout(() => bird.remove(), duration * 1000);
+        }
+
+        // 定期生成雲和鳥
+        setInterval(createCloud, 5000);
+        for(let i = 0; i < 5; i++) {
+            setTimeout(createCloud, i * 1000);
+        }
+
+        function scheduleNextBird() {
+            const delay = Math.random() * (15000 - 5000) + 5000;
+            setTimeout(() => {
+                createBird();
+                scheduleNextBird();
+            }, delay);
+        }
+        scheduleNextBird();
+
+        // 修改背景音樂對象
+        const bgMusic = {
+            context: null,
+            oscillators: [],
+            gainNodes: [],
+            isPlaying: false,
+            
+            init() {
+                this.context = new (window.AudioContext || window.webkitAudioContext)();
+                this.createMelody();
+            },
+            
+            createMelody() {
+                const notes = [
+                    440.00,  // A4
+                    493.88,  // B4
+                    523.25,  // C5
+                    587.33,  // D5
+                    659.25,  // E5
+                    698.46,  // F5
+                    783.99   // G5
+                ];
+                
+                // 修改旋律和節奏
+                const melody = [0, 2, 4, 2, 0, 2, 4, 6, 4, 2, 0]; // 更長的旋律
+                const duration = 0.3; // 稍微加快節奏
+                
+                melody.forEach((noteIndex, i) => {
+                    setTimeout(() => {
+                        if (this.isPlaying) {
+                            const osc = this.context.createOscillator();
+                            const gain = this.context.createGain();
+                            
+                            osc.type = 'triangle';
+                            osc.frequency.setValueAtTime(notes[noteIndex], this.context.currentTime);
+                            
+                            gain.gain.setValueAtTime(0.05, this.context.currentTime); // 降低音量
+                            
+                            osc.connect(gain);
+                            gain.connect(this.context.destination);
+                            
+                            osc.start();
+                            osc.stop(this.context.currentTime + duration);
+                            
+                            this.oscillators.push(osc);
+                            this.gainNodes.push(gain);
+                        }
+                    }, i * duration * 1000);
+                });
+                
+                // 循環播放
+                setTimeout(() => {
+                    this.oscillators = [];
+                    this.gainNodes = [];
+                    if (this.isPlaying) {
+                        this.createMelody();
+                    }
+                }, melody.length * duration * 1000);
+            },
+            
+            start() {
+                if (!this.isPlaying) {
+                    this.isPlaying = true;
+                    this.createMelody();
+                }
+            },
+            
+            stop() {
+                this.isPlaying = false;
+                this.oscillators.forEach(osc => {
+                    try {
+                        osc.stop();
+                    } catch (e) {}
+                });
+                this.oscillators = [];
+                this.gainNodes = [];
+            }
+        };
+
+        // 在頁面加載時初始化背景音樂
+        document.addEventListener('DOMContentLoaded', () => {
+            // 添加音樂控制按鈕
+            const musicBtn = document.createElement('button');
+            musicBtn.innerHTML = '🎵';
+            musicBtn.style.position = 'fixed';
+            musicBtn.style.top = '20px';
+            musicBtn.style.right = '20px';
+            musicBtn.style.fontSize = '24px';
+            musicBtn.style.padding = '10px';
+            musicBtn.style.background = 'rgba(0, 0, 0, 0.5)';
+            musicBtn.style.border = '2px solid #fff';
+            musicBtn.style.borderRadius = '50%';
+            musicBtn.style.color = '#fff';
+            musicBtn.style.cursor = 'pointer';
+            musicBtn.style.zIndex = '1000';
+            
+            let isMusicPlaying = false;
+            
+            musicBtn.addEventListener('click', () => {
+                if (!bgMusic.context) {
+                    bgMusic.init();
+                }
+                
+                if (isMusicPlaying) {
+                    bgMusic.stop();
+                    musicBtn.style.opacity = '0.5';
+                } else {
+                    bgMusic.start();
+                    musicBtn.style.opacity = '1';
+                }
+                isMusicPlaying = !isMusicPlaying;
+            });
+            
+            document.body.appendChild(musicBtn);
+        });
+
+        // 在遊戲結束時停止背景音樂
+        function gameOver() {
+            // ... 原有的遊戲結束代碼 ...
+            bgMusic.stop();
+        }
+
+        // 在重新開始遊戲時重新播放背景音樂
+        function resetGame() {
+            // ... 原有的重置代碼 ...
+            if (bgMusic.isPlaying) {
+                bgMusic.start();
+            }
+        }
+    </script>
+</body>
+</html> 

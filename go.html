@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>圍棋遊戲</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            font-family: 'Press Start 2P', cursive;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 200%;
+            height: 100%;
+            background-image: 
+                linear-gradient(0deg, #87CEEB 0%, #87CEEB 40%, #0099ff 40%, #0099ff 60%, #87CEEB 60%, #87CEEB 100%),
+                repeating-linear-gradient(0deg, transparent 0%, transparent 40%, #00ff00 40%, #00ff00 45%, transparent 45%, transparent 100%);
+            background-size: 100% 100%, 100px 100%;
+            animation: scrollBackground 20s linear infinite;
+            z-index: -2;
+        }
+
+        .pixel-mountain {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 150px;
+            background: repeating-linear-gradient(
+                45deg,
+                #4a9c2e 0%,
+                #4a9c2e 10%,
+                #3d8325 10%,
+                #3d8325 20%
+            );
+            clip-path: polygon(0% 100%, 20% 40%, 40% 80%, 60% 20%, 80% 60%, 100% 10%, 100% 100%);
+            z-index: -1;
+        }
+
+        .game-container {
+            display: flex;
+            align-items: flex-start;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 
+                -4px -4px 0 0 #e75a10,
+                4px -4px 0 0 #e75a10,
+                -4px 4px 0 0 #e75a10,
+                4px 4px 0 0 #e75a10,
+                inset -4px -4px 0 0 #feb142,
+                inset 4px -4px 0 0 #feb142,
+                inset -4px 4px 0 0 #873000,
+                inset 4px 4px 0 0 #873000,
+                0 0 0 4px #e75a10;
+        }
+
+        .board {
+            width: 600px;
+            height: 600px;
+            background: linear-gradient(45deg, #deb887, #cd853f);
+            position: relative;
+            border: 4px solid #8B4513;
+            box-shadow: 
+                0 0 20px rgba(0, 0, 0, 0.5),
+                inset 0 0 60px rgba(139, 69, 19, 0.3);
+            margin-right: 20px;
+            border-radius: 4px;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: rgba(0, 0, 51, 0.8);
+            padding: 15px;
+            border-radius: 5px;
+            color: white;
+            min-width: 150px;
+            box-shadow: 
+                -2px -2px 0 0 #feb142,
+                2px -2px 0 0 #feb142,
+                -2px 2px 0 0 #873000,
+                2px 2px 0 0 #873000;
+        }
+
+        button {
+            font-family: 'Press Start 2P', cursive;
+            background: #4A4A4A;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 
+                -2px -2px 0 0 #666,
+                2px -2px 0 0 #666,
+                -2px 2px 0 0 #333,
+                2px 2px 0 0 #333;
+            font-size: 14px;
+        }
+
+        button:hover {
+            background: #666;
+            transform: scale(1.05);
+        }
+
+        .home-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 10px 20px;
+            background: #4A4A4A;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .home-button:hover {
+            background: #666;
+        }
+
+        @keyframes scrollBackground {
+            from { transform: translateX(0); }
+            to { transform: translateX(-50%); }
+        }
+
+        .stone:hover {
+            transform: translate(-50%, -50%) scale(1.1);
+        }
+
+        .stone.preview {
+            opacity: 0.5;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.1); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+
+        @font-face {
+            font-family: 'Press Start 2P';
+            src: url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        }
+
+        .mode-select {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .mode-select button {
+            flex: 1;
+            opacity: 0.7;
+        }
+
+        .mode-select button.active {
+            opacity: 1;
+            background: #666;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="background"></div>
+    <div class="pixel-mountain"></div>
+    
+    <button class="home-button" onclick="window.location.href='Gameweb.html'">回首頁</button>
+    
+    <div class="game-container">
+        <div class="board">
+            <canvas id="goBoard" width="600" height="600"></canvas>
+        </div>
+        <div class="controls">
+            <div class="mode-select">
+                <button id="singlePlayer">單人模式</button>
+                <button id="multiPlayer">雙人模式</button>
+            </div>
+            <button id="pass">虛手</button>
+            <button id="resign">投降</button>
+            <button id="restart">重新開始</button>
+            <div id="turn">輪到：黑棋</div>
+            <div id="captures">
+                黑方提子：0<br>
+                白方提子：0
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('goBoard');
+        const ctx = canvas.getContext('2d');
+        const BOARD_SIZE = 19;
+        const CELL_SIZE = 30; // 每個格子的大小
+        const PADDING = 30;   // 棋盤邊距
+
+        let gameState = {
+            board: Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(null)),
+            currentPlayer: 'black',
+            captures: { black: 0, white: 0 },
+            lastMove: null,
+            ko: null,
+            gameOver: false,
+            passCount: 0,
+            gameMode: 'multi' // 'single' 或 'multi'
+        };
+
+        // 繪製棋盤
+        function drawBoard() {
+            // 清空畫布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 繪製棋盤背景
+            ctx.fillStyle = '#DEB887';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 繪製網格線
+            ctx.beginPath();
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 1;
+
+            // 繪製水平線
+            for (let i = 0; i < BOARD_SIZE; i++) {
+                const y = PADDING + i * CELL_SIZE;
+                ctx.moveTo(PADDING, y);
+                ctx.lineTo(canvas.width - PADDING, y);
+            }
+
+            // 繪製垂直線
+            for (let i = 0; i < BOARD_SIZE; i++) {
+                const x = PADDING + i * CELL_SIZE;
+                ctx.moveTo(x, PADDING);
+                ctx.lineTo(x, canvas.height - PADDING);
+            }
+            ctx.stroke();
+
+            // 繪製星位
+            const starPoints = [
+                [3, 3], [3, 9], [3, 15],
+                [9, 3], [9, 9], [9, 15],
+                [15, 3], [15, 9], [15, 15]
+            ];
+
+            ctx.fillStyle = '#000000';
+            starPoints.forEach(([x, y]) => {
+                ctx.beginPath();
+                ctx.arc(
+                    PADDING + x * CELL_SIZE,
+                    PADDING + y * CELL_SIZE,
+                    4, 0, Math.PI * 2
+                );
+                ctx.fill();
+            });
+        }
+
+        // 繪製棋子
+        function drawStone(row, col, color) {
+            const x = PADDING + col * CELL_SIZE;
+            const y = PADDING + row * CELL_SIZE;
+            const radius = CELL_SIZE / 2 - 2;
+
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            
+            if (color === 'black') {
+                const gradient = ctx.createRadialGradient(
+                    x - radius/3, y - radius/3, radius/10,
+                    x, y, radius
+                );
+                gradient.addColorStop(0, '#666');
+                gradient.addColorStop(1, '#000');
+                ctx.fillStyle = gradient;
+            } else {
+                const gradient = ctx.createRadialGradient(
+                    x - radius/3, y - radius/3, radius/10,
+                    x, y, radius
+                );
+                gradient.addColorStop(0, '#fff');
+                gradient.addColorStop(1, '#ddd');
+                ctx.fillStyle = gradient;
+            }
+            
+            ctx.fill();
+            ctx.strokeStyle = color === 'black' ? '#000' : '#ccc';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
+
+        // 處理點擊事件
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // 計算最近的交叉點
+            const col = Math.round((x - PADDING) / CELL_SIZE);
+            const row = Math.round((y - PADDING) / CELL_SIZE);
+            
+            // 確保點擊在有效範圍內
+            if (row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE) {
+                if (isValidMove(row, col)) {
+                    placeStone(row, col);
+                    checkGameStatus();
+                }
+            }
+        });
+
+        // 處理預覽效果
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // 計算最近的交叉點
+            const col = Math.round((x - PADDING) / CELL_SIZE);
+            const row = Math.round((y - PADDING) / CELL_SIZE);
+            
+            // 重繪棋盤
+            drawBoard();
+            // 繪製所有已放置的棋子
+            for (let i = 0; i < BOARD_SIZE; i++) {
+                for (let j = 0; j < BOARD_SIZE; j++) {
+                    if (gameState.board[i][j]) {
+                        drawStone(i, j, gameState.board[i][j]);
+                    }
+                }
+            }
+            
+            // 如果是有效位置，繪製預覽棋子
+            if (row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE) {
+                if (isValidMove(row, col)) {
+                    ctx.globalAlpha = 0.5;
+                    drawStone(row, col, gameState.currentPlayer);
+                    ctx.globalAlpha = 1.0;
+                }
+            }
+        });
+
+        // 修改更新棋盤函數
+        function updateBoard() {
+            drawBoard();
+            for (let i = 0; i < BOARD_SIZE; i++) {
+                for (let j = 0; j < BOARD_SIZE; j++) {
+                    if (gameState.board[i][j]) {
+                        drawStone(i, j, gameState.board[i][j]);
+                    }
+                }
+            }
+        }
+
+        // 檢查移動是否有效
+        function isValidMove(row, col) {
+            if (gameState.board[row][col] !== null) return false;
+            
+            // 檢查劫
+            if (gameState.ko && gameState.ko[0] === row && gameState.ko[1] === col) {
+                return false;
+            }
+
+            // 模擬落子
+            const tempBoard = gameState.board.map(row => [...row]);
+            tempBoard[row][col] = gameState.currentPlayer;
+            
+            // 檢查是否有氣
+            if (!hasLiberties(row, col, tempBoard)) {
+                // 檢查是否能提子
+                const captures = getCaptures(row, col, tempBoard);
+                if (captures.length === 0) return false;
+            }
+
+            return true;
+        }
+
+        // 放置棋子
+        function placeStone(row, col) {
+            gameState.board[row][col] = gameState.currentPlayer;
+            
+            // 處理提子
+            const captures = getCaptures(row, col, gameState.board);
+            captures.forEach(([r, c]) => {
+                gameState.board[r][c] = null;
+                gameState.captures[gameState.currentPlayer]++;
+            });
+
+            // 更新劫的狀態
+            gameState.ko = captures.length === 1 ? captures[0] : null;
+            
+            // 更新UI
+            updateBoard();
+            updateCaptures();
+            
+            // 切換玩家
+            gameState.currentPlayer = gameState.currentPlayer === 'black' ? 'white' : 'black';
+            document.getElementById('turn').textContent = `輪到：${gameState.currentPlayer === 'black' ? '黑棋' : '白棋'}`;
+            
+            // 重置虛手計數
+            gameState.passCount = 0;
+
+            // 如果是單人模式且輪到白棋，則觸發 AI 移動
+            if (gameState.gameMode === 'single' && gameState.currentPlayer === 'white') {
+                makeAIMove();
+            }
+        }
+
+        // 檢查是否有氣
+        function hasLiberties(row, col, board, checked = new Set()) {
+            const key = `${row},${col}`;
+            if (checked.has(key)) return false;
+            checked.add(key);
+
+            const color = board[row][col];
+            if (!color) return true;
+
+            const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+            
+            for (const [dx, dy] of directions) {
+                const newRow = row + dx;
+                const newCol = col + dy;
+                
+                if (newRow < 0 || newRow >= BOARD_SIZE || newCol < 0 || newCol >= BOARD_SIZE) continue;
+                
+                if (board[newRow][newCol] === null) return true;
+                if (board[newRow][newCol] === color && hasLiberties(newRow, newCol, board, checked)) return true;
+            }
+
+            return false;
+        }
+
+        // 獲取可以提子的位置
+        function getCaptures(row, col, board) {
+            const captures = [];
+            const color = board[row][col];
+            const opponent = color === 'black' ? 'white' : 'black';
+            
+            const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+            
+            for (const [dx, dy] of directions) {
+                const newRow = row + dx;
+                const newCol = col + dy;
+                
+                if (newRow < 0 || newRow >= BOARD_SIZE || newCol < 0 || newCol >= BOARD_SIZE) continue;
+                
+                if (board[newRow][newCol] === opponent) {
+                    const group = getGroup(newRow, newCol, board);
+                    if (!hasLibertiesGroup(group, board)) {
+                        captures.push(...group);
+                    }
+                }
+            }
+            
+            return captures;
+        }
+
+        // 獲取一組相連的棋子
+        function getGroup(row, col, board, group = [], checked = new Set()) {
+            const key = `${row},${col}`;
+            if (checked.has(key)) return;
+            checked.add(key);
+            
+            const color = board[row][col];
+            if (!color) return;
+            
+            group.push([row, col]);
+            
+            const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+            
+            for (const [dx, dy] of directions) {
+                const newRow = row + dx;
+                const newCol = col + dy;
+                
+                if (newRow < 0 || newRow >= BOARD_SIZE || newCol < 0 || newCol >= BOARD_SIZE) continue;
+                
+                if (board[newRow][newCol] === color) {
+                    getGroup(newRow, newCol, board, group, checked);
+                }
+            }
+            
+            return group;
+        }
+
+        // 檢查一組棋子是否有氣
+        function hasLibertiesGroup(group, board) {
+            for (const [row, col] of group) {
+                const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+                
+                for (const [dx, dy] of directions) {
+                    const newRow = row + dx;
+                    const newCol = col + dy;
+                    
+                    if (newRow < 0 || newRow >= BOARD_SIZE || newCol < 0 || newCol >= BOARD_SIZE) continue;
+                    
+                    if (board[newRow][newCol] === null) return true;
+                }
+            }
+            return false;
+        }
+
+        // 更新提子數
+        function updateCaptures() {
+            document.getElementById('captures').innerHTML = 
+                `黑方提子：${gameState.captures.black}<br>` +
+                `白方提子：${gameState.captures.white}`;
+        }
+
+        // 處理虛手
+        document.getElementById('pass').addEventListener('click', () => {
+            if (gameState.gameOver) return;
+            
+            gameState.passCount++;
+            if (gameState.passCount === 2) {
+                endGame('雙方虛手，遊戲結束');
+            } else {
+                gameState.currentPlayer = gameState.currentPlayer === 'black' ? 'white' : 'black';
+                document.getElementById('turn').textContent = `輪到：${gameState.currentPlayer === 'black' ? '黑棋' : '白棋'}`;
+            }
+        });
+
+        // AI 移動函數
+        function makeAIMove() {
+            if (gameState.gameOver || gameState.currentPlayer !== 'white') return;
+
+            // 簡單的 AI 邏輯：尋找第一個有效的移動
+            let validMoves = [];
+            for (let i = 0; i < BOARD_SIZE; i++) {
+                for (let j = 0; j < BOARD_SIZE; j++) {
+                    if (isValidMove(i, j)) {
+                        validMoves.push([i, j]);
+                    }
+                }
+            }
+
+            if (validMoves.length > 0) {
+                // 隨機選擇一個有效位置
+                const [row, col] = validMoves[Math.floor(Math.random() * validMoves.length)];
+                setTimeout(() => {
+                    placeStone(row, col);
+                    checkGameStatus();
+                }, 500); // 延遲500ms，使移動更自然
+            } else {
+                // 如果沒有有效移動，則虛手
+                handlePass();
+            }
+        }
+
+        // 添加模式選擇事件監聽器
+        document.getElementById('singlePlayer').addEventListener('click', () => {
+            gameState.gameMode = 'single';
+            resetGame();
+            // 視覺反饋
+            document.getElementById('singlePlayer').classList.add('active');
+            document.getElementById('multiPlayer').classList.remove('active');
+        });
+
+        document.getElementById('multiPlayer').addEventListener('click', () => {
+            gameState.gameMode = 'multi';
+            resetGame();
+            // 視覺反饋
+            document.getElementById('multiPlayer').classList.add('active');
+            document.getElementById('singlePlayer').classList.remove('active');
+        });
+
+        // 修改重新開始函數
+        function resetGame() {
+            gameState = {
+                ...gameState,
+                board: Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(null)),
+                currentPlayer: 'black',
+                captures: { black: 0, white: 0 },
+                lastMove: null,
+                ko: null,
+                gameOver: false,
+                passCount: 0
+            };
+            updateBoard();
+            updateCaptures();
+            document.getElementById('turn').textContent = '輪到：黑棋';
+        }
+
+        // 檢查遊戲狀態
+        function checkGameStatus() {
+            // 目前只檢查虛手，可以在這裡添加更多遊戲結束條件
+            if (gameState.passCount >= 2) {
+                endGame('雙方虛手，遊戲結束');
+            }
+        }
+
+        // 處理虛手
+        function handlePass() {
+            if (gameState.gameOver) return;
+            
+            gameState.passCount++;
+            if (gameState.passCount === 2) {
+                endGame('雙方虛手，遊戲結束');
+            } else {
+                gameState.currentPlayer = gameState.currentPlayer === 'black' ? 'white' : 'black';
+                document.getElementById('turn').textContent = `輪到：${gameState.currentPlayer === 'black' ? '黑棋' : '白棋'}`;
+            }
+        }
+
+        // 結束遊戲
+        function endGame(message) {
+            gameState.gameOver = true;
+            alert(message);
+        }
+
+        // 添加投降按鈕事件監聽器
+        document.getElementById('resign').addEventListener('click', () => {
+            if (gameState.gameOver) return;
+            endGame(`${gameState.currentPlayer === 'black' ? '黑棋' : '白棋'}投降，遊戲結束`);
+        });
+
+        // 添加重新開始按鈕事件監聽器
+        document.getElementById('restart').addEventListener('click', () => {
+            resetGame();
+        });
+
+        // 設置初始模式
+        document.getElementById('multiPlayer').classList.add('active');
+
+        // 初始化遊戲
+        drawBoard();
+    </script>
+</body>
+</html>

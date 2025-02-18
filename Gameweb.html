@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>復古遊戲天地</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            font-family: 'Press Start 2P', cursive;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        @font-face {
+            font-family: 'Press Start 2P';
+            src: url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        }
+
+        .background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 200%;
+            height: 100%;
+            background-image: 
+                linear-gradient(0deg, #87CEEB 0%, #87CEEB 40%, #0099ff 40%, #0099ff 60%, #87CEEB 60%, #87CEEB 100%),
+                repeating-linear-gradient(0deg, transparent 0%, transparent 40%, #00ff00 40%, #00ff00 45%, transparent 45%, transparent 100%);
+            background-size: 100% 100%, 100px 100%;
+            animation: scrollBackground 20s linear infinite;
+            z-index: -2;
+        }
+
+        .pixel-cloud {
+            position: fixed;
+            z-index: -1;
+            opacity: 0.9;
+        }
+
+        .cloud-svg {
+            width: 100%;
+            height: 100%;
+            fill: white;
+            filter: url(#pixelate);
+        }
+
+        .bird {
+            position: absolute;
+            width: 50px;
+            height: 30px;
+            z-index: -1;
+            opacity: 0;
+            transform-origin: center;
+        }
+
+        .bird-svg {
+            width: 100%;
+            height: 100%;
+            fill: #333;
+        }
+
+        .bird .wing {
+            transform-origin: 20px 15px;
+            animation: flapWing 0.4s infinite alternate ease-in-out;
+        }
+
+        @keyframes flapWing {
+            0% { transform: rotate(-30deg) scale(1.1); }
+            100% { transform: rotate(30deg) scale(0.9); }
+        }
+
+        @keyframes flyDiagonal1 {
+            0% { 
+                transform: translate(-100vw, 50vh) rotate(-20deg); 
+                opacity: 1;
+            }
+            100% { 
+                transform: translate(100vw, -50vh) rotate(-20deg); 
+                opacity: 1;
+            }
+        }
+
+        @keyframes flyDiagonal2 {
+            0% { 
+                transform: translate(-100vw, -50vh) rotate(20deg); 
+                opacity: 1;
+            }
+            100% { 
+                transform: translate(100vw, 50vh) rotate(20deg); 
+                opacity: 1;
+            }
+        }
+
+        @keyframes flyDiagonal3 {
+            0% { 
+                transform: translate(100vw, 50vh) rotate(160deg); 
+                opacity: 1;
+            }
+            100% { 
+                transform: translate(-100vw, -50vh) rotate(160deg); 
+                opacity: 1;
+            }
+        }
+
+        @keyframes flyDiagonal4 {
+            0% { 
+                transform: translate(100vw, -50vh) rotate(200deg); 
+                opacity: 1;
+            }
+            100% { 
+                transform: translate(-100vw, 50vh) rotate(200deg); 
+                opacity: 1;
+            }
+        }
+
+        .pixel-mountain {
+            position: absolute;
+            bottom: -150px; /* 初始位置在視窗外 */
+            width: 100%;
+            height: 150px;
+            background: repeating-linear-gradient(
+                45deg,
+                #4a9c2e 0%,
+                #4a9c2e 10%,
+                #3d8325 10%,
+                #3d8325 20%
+            );
+            clip-path: polygon(0% 100%, 20% 40%, 40% 80%, 60% 20%, 80% 60%, 100% 10%, 100% 100%);
+            z-index: -1;
+            animation: mountainRise 1s ease-out 0.5s forwards; /* 延遲0.5秒開始 */
+        }
+
+        .pixel-star {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #fff;
+            clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+            animation: twinkle 1s infinite alternate;
+        }
+
+        @keyframes scrollBackground {
+            from { transform: translateX(0); }
+            to { transform: translateX(-50%); }
+        }
+
+        @keyframes twinkle {
+            from { opacity: 0.3; }
+            to { opacity: 1; }
+        }
+
+        @keyframes mountainRise {
+            0% {
+                bottom: -150px;
+                transform: scale(0.95);
+            }
+            60% {
+                bottom: -20px;
+                transform: scale(1.02);
+            }
+            80% {
+                bottom: -10px;
+                transform: scale(0.98);
+            }
+            100% {
+                bottom: 0;
+                transform: scale(1);
+            }
+        }
+
+        .container {
+            text-align: center;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            position: relative;
+            z-index: 1;
+            width: 840px;
+            margin: 0 auto;
+            animation: dropDown 1.2s cubic-bezier(0.23, 1, 0.32, 1);
+            will-change: transform;
+            transform: translateZ(0);
+        }
+
+        h1 {
+            color: #fff;
+            text-shadow: 2px 2px #ff0000;
+            animation: glitch 1s infinite;
+            margin-bottom: 30px;
+            writing-mode: horizontal-tb;
+            font-size: 2em;
+        }
+
+        .canvas-container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            margin: 0 auto;
+            padding: 8px;
+        }
+
+        #gameCanvas {
+            width: 800px;
+            height: 600px;
+            background: transparent;
+            cursor: pointer;
+            image-rendering: pixelated;
+            border: none;
+            position: relative;
+            box-shadow: 
+                /* 外層邊框 */
+                -4px -4px 0 0 #e75a10,  /* 左上 - 亮橙色 */
+                4px -4px 0 0 #e75a10,   /* 右上 - 亮橙色 */
+                -4px 4px 0 0 #e75a10,   /* 左下 - 亮橙色 */
+                4px 4px 0 0 #e75a10,    /* 右下 - 亮橙色 */
+                inset -4px -4px 0 0 #feb142,  /* 內層左上 - 淺橙色 */
+                inset 4px -4px 0 0 #feb142,   /* 內層右上 - 淺橙色 */
+                inset -4px 4px 0 0 #873000,   /* 內層左下 - 深橙色 */
+                inset 4px 4px 0 0 #873000,    /* 內層右下 - 深橙色 */
+                /* 主要邊框 */
+                0 0 0 4px #e75a10;      /* 主邊框 - 亮橙色 */
+        }
+
+        .canvas-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                /* 角落裝飾 */
+                radial-gradient(circle at 0 0, #feb142 4px, transparent 4px),
+                radial-gradient(circle at 100% 0, #feb142 4px, transparent 4px),
+                radial-gradient(circle at 0 100%, #873000 4px, transparent 4px),
+                radial-gradient(circle at 100% 100%, #873000 4px, transparent 4px);
+            pointer-events: none;
+        }
+
+        /* 添加邊框的像素點裝飾 */
+        .canvas-container::after {
+            content: '';
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            right: 4px;
+            bottom: 4px;
+            background: 
+                /* 上邊框點裝飾 */
+                linear-gradient(90deg, transparent 4px, #feb142 4px, #feb142 8px, transparent 8px) 0 0 / 16px 4px,
+                /* 下邊框點裝飾 */
+                linear-gradient(90deg, transparent 4px, #873000 4px, #873000 8px, transparent 8px) 0 100% / 16px 4px,
+                /* 左邊框點裝飾 */
+                linear-gradient(0deg, transparent 4px, #feb142 4px, #feb142 8px, transparent 8px) 0 0 / 4px 16px,
+                /* 右邊框點裝飾 */
+                linear-gradient(0deg, transparent 4px, #873000 4px, #873000 8px, transparent 8px) 100% 0 / 4px 16px;
+            background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
+            pointer-events: none;
+        }
+
+        .game-button {
+            position: relative;
+            margin: 20px;
+            padding: 20px;
+            background: linear-gradient(45deg, #1e90ff, #00bfff);
+            clip-path: polygon(
+                0 4px, 4px 4px, 4px 0,
+                calc(100% - 4px) 0, 100% 4px,
+                100% calc(100% - 4px), calc(100% - 4px) 100%,
+                4px 100%, 0 calc(100% - 4px)
+            );
+            transition: transform 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .game-button:hover {
+            transform: scale(1.05);
+            filter: brightness(1.2);
+        }
+
+        @keyframes glitch {
+            0% { text-shadow: 2px 2px #ff0000; }
+            25% { text-shadow: -2px 2px #00ff00; }
+            50% { text-shadow: 2px -2px #0000ff; }
+            75% { text-shadow: -2px -2px #ff00ff; }
+            100% { text-shadow: 2px 2px #ff0000; }
+        }
+
+        @keyframes dropDown {
+            0% {
+                transform: translateY(-120vh) scale(0.7);
+                opacity: 0;
+            }
+            60% {
+                transform: translateY(30px) scale(1.1);
+                opacity: 1;
+            }
+            75% {
+                transform: translateY(-20px) scale(0.95);
+            }
+            87% {
+                transform: translateY(10px) scale(1.02);
+            }
+            94% {
+                transform: translateY(-5px) scale(0.99);
+            }
+            100% {
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @keyframes shadowScale {
+            0% {
+                box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+            }
+            60% {
+                box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+            }
+            100% {
+                box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            }
+        }
+
+        @keyframes floatCloud {
+            from { transform: translateX(-100%); }
+            to { transform: translateX(100vw); }
+        }
+
+        .pixelate-filter {
+            position: absolute;
+            width: 0;
+            height: 0;
+        }
+    </style>
+    <svg style="display: none;">
+        <!-- 雲朵 SVG -->
+        <symbol id="cloud-svg" viewBox="0 0 100 60">
+            <path d="M 10,40 
+                     C 10,30 20,20 30,20
+                     C 30,10 40,0 55,0
+                     C 70,0 80,10 80,20
+                     C 90,20 100,30 100,40
+                     C 100,50 90,60 80,60
+                     L 20,60
+                     C 10,60 0,50 10,40" 
+                  fill="white"/>
+        </symbol>
+        
+        <!-- 鳥 SVG -->
+        <symbol id="bird-svg" viewBox="0 0 50 30">
+            <path class="wing-left" d="M 15,15 Q 25,5 35,15" 
+                  style="animation: flapWing 0.4s infinite alternate ease-in-out"/>
+            <path class="wing-right" d="M 15,15 Q 25,25 35,15" 
+                  style="animation: flapWing 0.4s infinite alternate-reverse ease-in-out"/>
+            <path d="M 40,15 
+                    L 45,12
+                    Q 47,15 45,18
+                    L 40,15
+                    M 10,15
+                    Q 25,10 40,15
+                    Q 25,20 10,15 Z"/>
+        </symbol>
+
+        <!-- 添加邊框 SVG 定義 -->
+        <symbol id="pixel-frame" viewBox="0 0 800 600">
+            <!-- 外框 -->
+            <path d="M 8,0 H 792 L 800,8 V 592 L 792,600 H 8 L 0,592 V 8 L 8,0 Z" fill="#ffffff"/>
+            <!-- 內框 -->
+            <path d="M 16,8 H 784 L 792,16 V 584 L 784,592 H 16 L 8,584 V 16 L 16,8 Z" fill="#000000"/>
+            <!-- 角落裝飾 -->
+            <rect x="0" y="0" width="8" height="8" fill="#ffffff"/>
+            <rect x="792" y="0" width="8" height="8" fill="#ffffff"/>
+            <rect x="0" y="592" width="8" height="8" fill="#ffffff"/>
+            <rect x="792" y="592" width="8" height="8" fill="#ffffff"/>
+            <!-- 邊框裝飾點 -->
+            <rect x="24" y="4" width="4" height="4" fill="#000000"/>
+            <rect x="772" y="4" width="4" height="4" fill="#000000"/>
+            <rect x="24" y="592" width="4" height="4" fill="#000000"/>
+            <rect x="772" y="592" width="4" height="4" fill="#000000"/>
+        </symbol>
+    </svg>
+</head>
+<body>
+    <div class="background"></div>
+    <div class="pixel-mountain"></div>
+    <div class="pixel-cloud cloud-large" style="top: 15%; animation-duration: 30s;"></div>
+    <div class="pixel-cloud cloud-medium" style="top: 25%; animation-duration: 25s;"></div>
+    <div class="pixel-cloud cloud-small" style="top: 35%; animation-duration: 20s;"></div>
+    <div class="pixel-cloud cloud-large" style="top: 45%; animation-duration: 28s;"></div>
+    <div class="pixel-cloud cloud-medium" style="top: 55%; animation-duration: 22s;"></div>
+    <div class="pixel-star" style="top: 10%; left: 20%"></div>
+    <div class="pixel-star" style="top: 15%; left: 80%"></div>
+    <div class="pixel-star" style="top: 25%; left: 40%"></div>
+    <div class="pixel-star" style="top: 30%; left: 60%"></div>
+    <div class="container">
+        <h1>復古遊戲天地</h1>
+        <div class="canvas-container">
+            <canvas id="gameCanvas" width="800" height="600"></canvas>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const games = [
+            { name: '俄羅斯方塊', x: 250, y: 200 },  // 左邊按鈕往左移
+            { name: '圍棋', x: 550, y: 200 },       // 右邊按鈕往右移
+            { name: '象棋', x: 250, y: 400 },       // 左邊按鈕往左移
+            { name: '跳棋', x: 550, y: 400 }        // 右邊按鈕往右移
+        ];
+
+        // 添加按鈕動畫狀態
+        let hoveredButton = null;
+        let buttonAnimationFrame = 0;
+
+        function drawPixelText(text, x, y, size) {
+            ctx.font = `${size}px 'Press Start 2P'`;
+            ctx.fillText(text, x, y);
+        }
+
+        function drawPixelButton(x, y, width, height, index) {
+            // 基礎位移動畫
+            const baseOffset = Math.sin(Date.now() * 0.002 + index * Math.PI/2) * 5;
+            
+            // 如果是被hover的按鈕，添加震動效果
+            let shakeX = 0;
+            let shakeY = 0;
+            if (hoveredButton === index) {
+                shakeX = Math.sin(Date.now() * 0.1) * 2;
+                shakeY = Math.cos(Date.now() * 0.1) * 2;
+            }
+
+            // 應用位移
+            x += baseOffset + shakeX;
+            y += shakeY;
+
+            // 8-bit 風格配色 - 使用綠色系
+            const colors = {
+                main: '#32CD32',      // 主要顏色 - 亮綠
+                light: '#98FB98',     // 亮部 - 淺綠
+                dark: '#228B22',      // 暗部 - 深綠
+                highlight: '#90EE90'   // 高光 - 最亮綠
+            };
+            
+            // 繪製按鈕陰影
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.fillRect(x + 4, y + 4, width, height);
+
+            // 繪製按鈕外框
+            ctx.fillStyle = colors.dark;
+            ctx.fillRect(x, y, width, height);
+            
+            // 繪製按鈕主體
+            ctx.fillStyle = colors.main;
+            ctx.fillRect(x + 4, y + 4, width - 8, height - 8);
+            
+            // 邊框
+            ctx.fillStyle = colors.light;
+            ctx.fillRect(x, y, width, 4); // 上邊
+            ctx.fillRect(x, y, 4, height); // 左邊
+            
+            ctx.fillStyle = colors.dark;
+            ctx.fillRect(x, y + height - 4, width, 4); // 下邊
+            ctx.fillRect(x + width - 4, y, 4, height); // 右邊
+            
+            // 角落裝飾
+            ctx.fillStyle = colors.highlight;
+            ctx.fillRect(x, y, 4, 4);
+            ctx.fillRect(x + width - 4, y, 4, 4);
+            ctx.fillRect(x, y + height - 4, 4, 4);
+            ctx.fillRect(x + width - 4, y + height - 4, 4, 4);
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#000033';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 繪製遊戲選項
+            games.forEach((game, index) => {
+                drawPixelButton(game.x - 80, game.y - 40, 160, 80, index);
+                
+                // 文字位置跟隨按鈕移動
+                const textOffset = Math.sin(Date.now() * 0.002 + index * Math.PI/2) * 5;
+                let textX = game.x - 70 + textOffset;
+                let textY = game.y + 10;
+                
+                if (hoveredButton === index) {
+                    textX += Math.sin(Date.now() * 0.1) * 2;
+                    textY += Math.cos(Date.now() * 0.1) * 2;
+                }
+
+                ctx.fillStyle = '#FFFFFF';
+                ctx.shadowColor = '#000000';
+                ctx.shadowBlur = 2;
+                drawPixelText(game.name, textX, textY, 20); // 增大文字大小
+                ctx.shadowBlur = 0;
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        // 處理滑鼠事件
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            let found = false;
+            games.forEach((game, index) => {
+                if (x >= game.x - 80 && x <= game.x + 80 &&
+                    y >= game.y - 40 && y <= game.y + 40) {
+                    hoveredButton = index;
+                    found = true;
+                    canvas.style.cursor = 'pointer';
+                }
+            });
+
+            if (!found) {
+                hoveredButton = null;
+                canvas.style.cursor = 'default';
+            }
+        });
+
+        // 修改點擊事件處理
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            games.forEach((game, index) => {
+                if (x >= game.x - 80 && x <= game.x + 80 &&
+                    y >= game.y - 40 && y <= game.y + 40) {
+                    if (game.name === '俄羅斯方塊') {
+                        window.location.href = 'tetris.html';
+                    } else if (game.name === '圍棋') {
+                        window.location.href = 'go.html';
+                    } else {
+                        alert(`即將開始 ${game.name}！`);
+                    }
+                }
+            });
+        });
+
+        canvas.addEventListener('mouseout', () => {
+            hoveredButton = null;
+            canvas.style.cursor = 'default';
+        });
+
+        function createCloud() {
+            const cloud = document.createElement('div');
+            cloud.className = 'pixel-cloud';
+            
+            // 隨機大小
+            const size = Math.random() * (160 - 80) + 80;
+            cloud.style.width = size + 'px';
+            cloud.style.height = (size * 0.6) + 'px';
+            
+            // 隨機位置和速度
+            cloud.style.top = Math.random() * 60 + '%';
+            cloud.style.left = '-100px'; // 從左側開始
+            const duration = Math.random() * (30 - 20) + 20;
+            
+            // 使用 transform 進行移動
+            cloud.style.animation = `floatCloud ${duration}s linear`;
+            
+            // 添加像素化的 SVG 雲朵
+            cloud.innerHTML = `
+                <svg class="cloud-svg" viewBox="0 0 100 60">
+                    <path d="M 10,40 
+                             C 10,30 20,20 30,20
+                             C 30,10 40,0 55,0
+                             C 70,0 80,10 80,20
+                             C 90,20 100,30 100,40
+                             C 100,50 90,60 80,60
+                             L 20,60
+                             C 10,60 0,50 10,40" />
+                </svg>`;
+            
+            document.body.appendChild(cloud);
+            
+            // 動畫結束後移除
+            cloud.addEventListener('animationend', () => {
+                cloud.remove();
+            });
+        }
+
+        function createBird() {
+            const bird = document.createElement('div');
+            bird.className = 'bird';
+            
+            // 隨機大小
+            const size = Math.random() * (50 - 30) + 30;
+            bird.style.width = size + 'px';
+            bird.style.height = (size * 0.6) + 'px';
+            
+            // 隨機起始位置和方向
+            const startPositions = [
+                { x: -100, y: Math.random() * 60 + 20 }, // 左側
+                { x: window.innerWidth + 100, y: Math.random() * 60 + 20 }, // 右側
+                { x: Math.random() * window.innerWidth, y: -100 }, // 上方
+                { x: Math.random() * window.innerWidth, y: window.innerHeight + 100 } // 下方
+            ];
+            
+            const startPos = startPositions[Math.floor(Math.random() * startPositions.length)];
+            const endPos = {
+                x: Math.random() * window.innerWidth,
+                y: Math.random() * (window.innerHeight - 200) + 100
+            };
+            
+            // 計算角度
+            const angle = Math.atan2(endPos.y - startPos.y, endPos.x - startPos.x) * 180 / Math.PI;
+            
+            // 設置初始位置
+            bird.style.left = startPos.x + 'px';
+            bird.style.top = startPos.y + 'px';
+            
+            const duration = Math.random() * (12 - 8) + 8;
+            
+            // 自定義動畫
+            bird.animate([
+                {
+                    left: startPos.x + 'px',
+                    top: startPos.y + 'px',
+                    transform: `rotate(${angle}deg)`,
+                    opacity: 1
+                },
+                {
+                    left: endPos.x + 'px',
+                    top: endPos.y + 'px',
+                    transform: `rotate(${angle}deg)`,
+                    opacity: 1
+                }
+            ], {
+                duration: duration * 1000,
+                easing: 'linear'
+            });
+            
+            // 添加 SVG
+            bird.innerHTML = `
+                <svg class="bird-svg" viewBox="0 0 50 30">
+                    <path class="wing-left" d="M 15,15 Q 25,5 35,15" 
+                          style="animation: flapWing 0.4s infinite alternate ease-in-out"/>
+                    <path class="wing-right" d="M 15,15 Q 25,25 35,15" 
+                          style="animation: flapWing 0.4s infinite alternate-reverse ease-in-out"/>
+                    <path d="M 40,15 L 45,12 Q 47,15 45,18 L 40,15 M 10,15 Q 25,10 40,15 Q 25,20 10,15 Z"/>
+                </svg>`;
+            
+            document.body.appendChild(bird);
+            
+            // 動畫結束後移除
+            setTimeout(() => bird.remove(), duration * 1000);
+        }
+
+        // 更頻繁地生成雲朵
+        setInterval(createCloud, 5000);
+        // 初始生成多朵雲
+        for(let i = 0; i < 5; i++) {
+            setTimeout(createCloud, i * 1000);
+        }
+
+        // 隨機創建鳥
+        function scheduleNextBird() {
+            const delay = Math.random() * (15000 - 5000) + 5000;
+            setTimeout(() => {
+                createBird();
+                scheduleNextBird();
+            }, delay);
+        }
+        scheduleNextBird();
+
+        // 開始動畫循環
+        animate();
+
+        // 添加背景音樂生成器
+        const bgMusic = {
+            context: null,
+            oscillators: [],
+            gainNodes: [],
+            isPlaying: false,
+            
+            init() {
+                this.context = new (window.AudioContext || window.webkitAudioContext)();
+                this.createMelody();
+            },
+            
+            createMelody() {
+                const notes = {
+                    'C4': 261.63, 'D4': 293.66, 'E4': 329.63, 'F4': 349.23, 'G4': 392.00, 'A4': 440.00, 'B4': 493.88,
+                    'C5': 523.25, 'D5': 587.33, 'E5': 659.25, 'F5': 698.46, 'G5': 783.99, 'A5': 880.00, 'B5': 987.77
+                };
+
+                // 定義一個較長的旋律序列
+                const melody = [
+                    // 第一段
+                    {note: 'E4', duration: 0.5}, {note: 'G4', duration: 0.5}, {note: 'A4', duration: 1},
+                    {note: 'E4', duration: 0.5}, {note: 'G4', duration: 0.5}, {note: 'B4', duration: 1},
+                    {note: 'A4', duration: 0.5}, {note: 'C5', duration: 0.5}, {note: 'E5', duration: 1},
+                    {note: 'D5', duration: 2},
+                    
+                    // 第二段
+                    {note: 'G4', duration: 0.5}, {note: 'B4', duration: 0.5}, {note: 'D5', duration: 1},
+                    {note: 'C5', duration: 0.5}, {note: 'A4', duration: 0.5}, {note: 'F4', duration: 1},
+                    {note: 'E4', duration: 0.5}, {note: 'G4', duration: 0.5}, {note: 'C5', duration: 1},
+                    {note: 'B4', duration: 2},
+                    
+                    // 第三段
+                    {note: 'A4', duration: 0.5}, {note: 'C5', duration: 0.5}, {note: 'E5', duration: 1},
+                    {note: 'D5', duration: 0.5}, {note: 'B4', duration: 0.5}, {note: 'G4', duration: 1},
+                    {note: 'F4', duration: 0.5}, {note: 'A4', duration: 0.5}, {note: 'C5', duration: 1},
+                    {note: 'B4', duration: 2}
+                ];
+
+                let time = 0;
+                const baseVolume = 0.1;  // 降低整體音量
+                
+                melody.forEach(({note, duration}) => {
+                    setTimeout(() => {
+                        if (this.isPlaying) {
+                            const osc = this.context.createOscillator();
+                            const gain = this.context.createGain();
+                            
+                            // 使用方波和三角波的混合音色
+                            osc.type = 'square';
+                            const triangle = this.context.createOscillator();
+                            triangle.type = 'triangle';
+                            
+                            osc.frequency.setValueAtTime(notes[note], this.context.currentTime);
+                            triangle.frequency.setValueAtTime(notes[note], this.context.currentTime);
+                            
+                            // 音量包絡
+                            gain.gain.setValueAtTime(0, this.context.currentTime);
+                            gain.gain.linearRampToValueAtTime(baseVolume, this.context.currentTime + 0.1);
+                            gain.gain.linearRampToValueAtTime(baseVolume * 0.7, this.context.currentTime + duration * 0.8);
+                            gain.gain.linearRampToValueAtTime(0, this.context.currentTime + duration);
+                            
+                            osc.connect(gain);
+                            triangle.connect(gain);
+                            gain.connect(this.context.destination);
+                            
+                            osc.start();
+                            triangle.start();
+                            osc.stop(this.context.currentTime + duration);
+                            triangle.stop(this.context.currentTime + duration);
+                            
+                            this.oscillators.push(osc, triangle);
+                            this.gainNodes.push(gain);
+                        }
+                    }, time * 1000);
+                    
+                    time += duration;
+                });
+                
+                // 循環播放
+                setTimeout(() => {
+                    this.oscillators = [];
+                    this.gainNodes = [];
+                    if (this.isPlaying) {
+                        this.createMelody();
+                    }
+                }, time * 1000);
+            },
+            
+            start() {
+                if (!this.isPlaying) {
+                    this.isPlaying = true;
+                    this.createMelody();
+                }
+            },
+            
+            stop() {
+                this.isPlaying = false;
+                this.oscillators.forEach(osc => {
+                    try {
+                        osc.stop();
+                    } catch (e) {}
+                });
+                this.oscillators = [];
+                this.gainNodes = [];
+            }
+        };
+
+        // 修改頁面加載事件處理
+        document.addEventListener('DOMContentLoaded', () => {
+            // 添加音樂控制按鈕
+            const musicBtn = document.createElement('button');
+            musicBtn.innerHTML = '🎵';
+            musicBtn.style.position = 'fixed';
+            musicBtn.style.top = '20px';
+            musicBtn.style.right = '20px';
+            musicBtn.style.fontSize = '24px';
+            musicBtn.style.padding = '10px';
+            musicBtn.style.background = 'rgba(0, 0, 0, 0.5)';
+            musicBtn.style.border = '2px solid #fff';
+            musicBtn.style.borderRadius = '50%';
+            musicBtn.style.color = '#fff';
+            musicBtn.style.cursor = 'pointer';
+            musicBtn.style.zIndex = '1000';
+            
+            let isMusicPlaying = true; // 改為 true
+            
+            // 初始化並自動開始播放音樂
+            bgMusic.init();
+            bgMusic.start();
+            musicBtn.style.opacity = '1';
+            
+            musicBtn.addEventListener('click', () => {
+                if (isMusicPlaying) {
+                    bgMusic.stop();
+                    musicBtn.style.opacity = '0.5';
+                } else {
+                    bgMusic.start();
+                    musicBtn.style.opacity = '1';
+                }
+                isMusicPlaying = !isMusicPlaying;
+            });
+            
+            document.body.appendChild(musicBtn);
+        });
+    </script>
+
+    <!-- 添加像素化濾鏡 -->
+    <svg class="pixelate-filter">
+        <defs>
+            <filter id="pixelate">
+                <feFlood x="4" y="4" height="2" width="2"/>
+                <feComposite width="8" height="8"/>
+                <feTile result="a"/>
+                <feComposite in="SourceGraphic" in2="a" operator="in"/>
+                <feMorphology operator="dilate" radius="1"/>
+            </filter>
+        </defs>
+    </svg>
+</body>
+</html>
