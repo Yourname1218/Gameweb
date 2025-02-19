@@ -768,6 +768,7 @@
                 
                 for (const direction of directions) {
                     let count = 1;
+                    let winningPieces = [[row, col]];  // 移到這裡，每個方向重新收集
                     
                     for (const [dx, dy] of direction) {
                         let r = row + dx;
@@ -777,15 +778,126 @@
                                c >= 0 && c < this.boardSize && 
                                this.pieces[r][c] === currentPiece) {
                             count++;
+                            winningPieces.push([r, c]);
                             r += dx;
                             c += dy;
                         }
                     }
                     
-                    if (count >= 5) return true;
+                    if (count >= 5) {
+                        // 找到五子連線，立即使用這個方向的獲勝棋子
+                        this.showWinAnimation(winningPieces, currentPiece);
+                        return true;
+                    }
                 }
                 
                 return false;
+            },
+            
+            showWinAnimation(winningPieces, winner) {
+                this.gameStarted = false;
+                const ctx = this.pieceCtx;
+                let alpha = 0;
+                let growing = true;
+                
+                // 先清除整個畫布
+                ctx.clearRect(0, 0, this.pieceCanvas.width, this.pieceCanvas.height);
+                
+                // 重新繪製所有棋子
+                this.drawPieces();
+                
+                const animate = () => {
+                    if (!this.gameStarted) {
+                        // 清除獲勝棋子
+                        winningPieces.forEach(([row, col]) => {
+                            const x = 20 + col * this.cellSize;
+                            const y = 20 + row * this.cellSize;
+                            ctx.clearRect(x - this.cellSize/2, y - this.cellSize/2, 
+                                        this.cellSize * 1.5, this.cellSize * 1.5);
+                            
+                            const radius = this.cellSize * 0.4 * (1 + alpha * 0.3);
+                            
+                            // 添加陰影
+                            ctx.beginPath();
+                            ctx.arc(x + 2, y + 2, radius, 0, Math.PI * 2);
+                            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                            ctx.fill();
+
+                            // 添加光暈效果
+                            const glowColor = winner === 1 ? '255, 215, 0' : '255, 255, 255';
+                            const glow = ctx.createRadialGradient(x, y, 0, x, y, radius * 1.5);
+                            glow.addColorStop(0, `rgba(${glowColor}, ${alpha * 0.5})`);
+                            glow.addColorStop(1, 'rgba(255, 215, 0, 0)');
+                            ctx.fillStyle = glow;
+                            ctx.beginPath();
+                            ctx.arc(x, y, radius * 1.5, 0, Math.PI * 2);
+                            ctx.fill();
+                            
+                            // 繪製棋子
+                            ctx.beginPath();
+                            ctx.arc(x, y, radius, 0, Math.PI * 2);
+                            
+                            if (winner === 1) {
+                                // 黑子的漸層
+                                const gradient = ctx.createRadialGradient(
+                                    x - radius/3, y - radius/3, radius/10,
+                                    x, y, radius
+                                );
+                                gradient.addColorStop(0, `rgba(102, 102, 102, ${0.8 + alpha * 0.2})`);
+                                gradient.addColorStop(0.7, 'black');
+                                gradient.addColorStop(1, `rgba(255, 215, 0, ${alpha})`);
+                                ctx.fillStyle = gradient;
+                                ctx.fill();
+                            } else {
+                                // 白子的漸層
+                                const gradient = ctx.createRadialGradient(
+                                    x - radius/3, y - radius/3, radius/10,
+                                    x, y, radius
+                                );
+                                gradient.addColorStop(0, '#fff');
+                                gradient.addColorStop(0.7, '#ddd');
+                                gradient.addColorStop(1, `rgba(255, 255, 255, ${alpha})`);
+                                ctx.fillStyle = gradient;
+                                ctx.fill();
+                                
+                                // 白子的邊框
+                                ctx.strokeStyle = `rgba(153, 153, 153, ${0.5 + alpha * 0.5})`;
+                                ctx.lineWidth = 1;
+                                ctx.stroke();
+                            }
+                            
+                            // 添加高光
+                            ctx.beginPath();
+                            ctx.arc(x - radius/3, y - radius/3, radius/3, 0, Math.PI * 2);
+                            ctx.fillStyle = `rgba(255, 255, 255, ${0.2 + alpha * 0.3})`;
+                            ctx.fill();
+                            
+                            // 添加邊緣光環
+                            ctx.beginPath();
+                            ctx.arc(x, y, radius * 1.2, 0, Math.PI * 2);
+                            ctx.strokeStyle = `rgba(${glowColor}, ${alpha * 0.8})`;
+                            ctx.lineWidth = 3;
+                            ctx.stroke();
+                        });
+                        
+                        // 更新透明度
+                        if (growing) {
+                            alpha += 0.03;  // 減慢動畫速度
+                            if (alpha >= 1) growing = false;
+                        } else {
+                            alpha -= 0.03;
+                            if (alpha <= 0) growing = true;
+                        }
+                        
+                        requestAnimationFrame(animate);
+                    }
+                };
+                
+                animate();
+                
+                // 顯示獲勝訊息
+                const winner_text = winner === 1 ? "黑子" : "白子";
+                document.querySelector('.turn-indicator').textContent = `${winner_text}獲勝！`;
             },
             
             computerMove() {
